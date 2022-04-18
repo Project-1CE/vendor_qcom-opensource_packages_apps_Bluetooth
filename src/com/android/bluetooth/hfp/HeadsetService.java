@@ -1283,20 +1283,20 @@ public class HeadsetService extends ProfileService {
 
         public void phoneStateChangedDsDa(int numActive, int numHeld, int callState, String number,
                 int type, String name, AttributionSource source) {
-            if (mService == null || !mService.isAlive()) {
-                Log.w(TAG, "mService is unavailable: " + mService);
+            HeadsetService service = getService(source);
+            if (service == null) {
                 return;
             }
-            mService.phoneStateChanged(numActive, numHeld, callState, number, type, name, false);
+            service.phoneStateChanged(numActive, numHeld, callState, number, type, name, false);
         }
 
         public void clccResponseDsDa(int index, int direction, int status, int mode, boolean mpty,
                 String number, int type, AttributionSource source) {
-            if (mService == null || !mService.isAlive()) {
-                Log.w(TAG, "mService is unavailable: " + mService);
+            HeadsetService service = getService(source);
+            if (service == null) {
                 return;
             }
-            mService.clccResponse(index, direction, status, mode, mpty, number, type);
+            service.clccResponse(index, direction, status, mode, mpty, number, type);
         }
     }
 
