@@ -1181,6 +1181,10 @@ public class HeadsetService extends ProfileService {
             else
                 Log.w(TAG, "mCallControl is null");
 
+            HeadsetService service = getService(source);
+            if (service != null) {
+                service.phoneStateChanged(numActive, numHeld, callState, number, type, name, false);
+            }
         }
 
         @Override
@@ -1188,13 +1192,18 @@ public class HeadsetService extends ProfileService {
                 String number, int type, AttributionSource source,
                 SynchronousResultReceiver receiver) {
             Log.d(TAG, "clccResponse()");
+            CallControlIntf mCallControl = CallControlIntf.get();
+            if (mCallControl != null)
+                mCallControl.clccResponse(index, direction, status, mode, mpty, number, type);
+            else
+                Log.w(TAG, "mCallControl is null");
+
             try {
-              CallControlIntf mCallControl = CallControlIntf.get();
-              if (mCallControl != null)
-                 mCallControl.clccResponse(index, direction, status, mode, mpty, number, type);
-              else
-                  Log.w(TAG, "mCallControl is null");
-              receiver.send(null);
+                HeadsetService service = getService(source);
+                if (service != null) {
+                    service.clccResponse(index, direction, status, mode, mpty, number, type);
+                }
+                receiver.send(null);
             } catch (RuntimeException e) {
                 receiver.propagateException(e);
             }
@@ -1272,7 +1281,6 @@ public class HeadsetService extends ProfileService {
             }
         }
 
-        @Override
         public void phoneStateChangedDsDa(int numActive, int numHeld, int callState, String number,
                 int type, String name, AttributionSource source) {
             if (mService == null || !mService.isAlive()) {
@@ -1282,7 +1290,6 @@ public class HeadsetService extends ProfileService {
             mService.phoneStateChanged(numActive, numHeld, callState, number, type, name, false);
         }
 
-        @Override
         public void clccResponseDsDa(int index, int direction, int status, int mode, boolean mpty,
                 String number, int type, AttributionSource source) {
             if (mService == null || !mService.isAlive()) {
