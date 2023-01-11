@@ -982,6 +982,13 @@ public class A2dpService extends ProfileService {
     public boolean setActiveDevice(BluetoothDevice device) {
 
         if(ApmConstIntf.getQtiLeAudioEnabled() || (ApmConstIntf.getAospLeaEnabled())) {
+            if (mShoActive) {
+                Log.e(TAG, "setActiveDevice: Pending SHO, ignore");
+                return false;
+            } else if (Objects.equals(device, mActiveDevice)) {
+                Log.d(TAG, "setActiveDevice: same device");
+                return true;
+            }
             ActiveDeviceManagerServiceIntf activeDeviceManager = ActiveDeviceManagerServiceIntf.get();
             return activeDeviceManager.setActiveDevice(device, ApmConstIntf.AudioFeatures.MEDIA_AUDIO, false);
         }
@@ -1395,7 +1402,7 @@ public class A2dpService extends ProfileService {
             }
         }
 
-        if(isAdvUnicastAudioEnabled) {
+        if(ApmConstIntf.getQtiLeAudioEnabled()) {
             VolumeManagerIntf mVolumeManager = VolumeManagerIntf.get();
             mVolumeManager.setMediaAbsoluteVolume(volume);
             return;

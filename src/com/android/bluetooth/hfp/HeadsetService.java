@@ -145,7 +145,7 @@ public class HeadsetService extends ProfileService {
     private static final int[] CONNECTING_CONNECTED_STATES =
             {BluetoothProfile.STATE_CONNECTING, BluetoothProfile.STATE_CONNECTED};
     private static final int[] AUDIO_DISCONNECTING_AND_AUDIO_CONNECTED_STATES =
-            {BluetoothHeadset.STATE_AUDIO_DISCONNECTING, BluetoothHeadset.STATE_AUDIO_CONNECTED};
+            {BluetoothHeadset.STATE_AUDIO_DISCONNECTING, BluetoothHeadset.STATE_AUDIO_CONNECTED, BluetoothHeadset.STATE_AUDIO_CONNECTING};
     private static final int DIALING_OUT_TIMEOUT_MS = 10000;
 
     private int mMaxHeadsetConnections = 1;
@@ -549,7 +549,7 @@ public class HeadsetService extends ProfileService {
                     int streamType = intent.getIntExtra(AudioManager.EXTRA_VOLUME_STREAM_TYPE, -1);
                     if (streamType == AudioManager.STREAM_BLUETOOTH_SCO) {
                         AdapterService adapterService = AdapterService.getAdapterService();
-                        if(!adapterService.isAdvUnicastAudioFeatEnabled()) {
+                        if(!ApmConstIntf.getQtiLeAudioEnabled()) {
                             setIntentScoVolume(intent);
                         }
                     }
@@ -2053,7 +2053,7 @@ public class HeadsetService extends ProfileService {
      * @return true on success, otherwise false
      */
     public int setActiveDeviceHF(BluetoothDevice device) {
-        Log.i(TAG, "setActiveDevice: device=" + device + ", " + Utils.getUidPidString());
+        Log.i(TAG, "setActiveDeviceHF: device=" + device + ", " + Utils.getUidPidString());
         synchronized (mStateMachines) {
             if (device == null) {
                 // Clear the active device
@@ -2097,7 +2097,7 @@ public class HeadsetService extends ProfileService {
                     }
                 }
                 mActiveDevice = null;
-                if (!ApmConstIntf.getQtiLeAudioEnabled()) {
+                if (!(ApmConstIntf.getQtiLeAudioEnabled() || ApmConstIntf.getAospLeaEnabled())) {
                    broadcastActiveDevice(null);
                 }
                 return ActiveDeviceManagerServiceIntf.SHO_SUCCESS;
@@ -2165,7 +2165,7 @@ public class HeadsetService extends ProfileService {
                     mNativeInterface.setActiveDevice(previousActiveDevice);
                     return ActiveDeviceManagerServiceIntf.SHO_FAILED;
                 }
-                if(!ApmConstIntf.getQtiLeAudioEnabled()) {
+                if (!(ApmConstIntf.getQtiLeAudioEnabled() || ApmConstIntf.getAospLeaEnabled())) {
                     broadcastActiveDevice(mActiveDevice);
                 }
             } else if (shouldPersistAudio()) {
@@ -2179,11 +2179,11 @@ public class HeadsetService extends ProfileService {
                         return ActiveDeviceManagerServiceIntf.SHO_FAILED;
                     }
                 }
-                if(!ApmConstIntf.getQtiLeAudioEnabled()) {
+                if (!(ApmConstIntf.getQtiLeAudioEnabled() || ApmConstIntf.getAospLeaEnabled())) {
                     broadcastActiveDevice(mActiveDevice);
                 }
             } else {
-                if(!ApmConstIntf.getQtiLeAudioEnabled()) {
+                if (!(ApmConstIntf.getQtiLeAudioEnabled() || ApmConstIntf.getAospLeaEnabled())) {
                     broadcastActiveDevice(mActiveDevice);
                 }
             }
