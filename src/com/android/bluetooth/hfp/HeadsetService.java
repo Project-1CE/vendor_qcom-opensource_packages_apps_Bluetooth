@@ -46,11 +46,6 @@
  * IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
  * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE
- *
- * Changes from Qualcomm Innovation Center are provided under the following license:
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
- * SPDX-License-Identifier: BSD-3-Clause-Clear
- *
  */
 
 package com.android.bluetooth.hfp;
@@ -99,7 +94,6 @@ import com.android.bluetooth.btservice.storage.DatabaseManager;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.bluetooth.apm.DeviceProfileMapIntf;
 import com.android.bluetooth.apm.ApmConstIntf;
-import com.android.bluetooth.apm.ApmConst;
 import com.android.bluetooth.apm.CallAudioIntf;
 import com.android.bluetooth.apm.CallControlIntf;
 import com.android.bluetooth.apm.ActiveDeviceManagerServiceIntf;
@@ -652,11 +646,6 @@ public class HeadsetService extends ProfileService {
             mCallAudio.onAudioStateChange(device, mAudioState);
     }
 
-    public boolean isVoipLeaWarEnabled() {
-        CallAudioIntf mCallAudio = CallAudioIntf.get();
-        return mCallAudio.isVoipLeaWarEnabled();
-    }
-
     public void setIntentScoVolume(Intent intent) {
         Log.w(TAG, "setIntentScoVolume");
         synchronized (mStateMachines) {
@@ -697,24 +686,6 @@ public class HeadsetService extends ProfileService {
                 return null;
             }
             return mService;
-        }
-
-        private boolean isAospLeaVoipWarEnabled() {
-            boolean ret = false;
-            if (ApmConstIntf.getAospLeaEnabled()) {
-                CallAudioIntf mCallAudio = CallAudioIntf.get();
-                ActiveDeviceManagerServiceIntf mActiveDeviceManager =
-                        ActiveDeviceManagerServiceIntf.get();
-                if (mCallAudio.isVoipLeaWarEnabled() &&
-                        (mActiveDeviceManager.getActiveProfile(ApmConst.AudioFeatures.CALL_AUDIO)
-                        == ApmConst.AudioProfiles.BAP_CALL ||
-                        mActiveDeviceManager.getActiveProfile(ApmConst.AudioFeatures.CALL_AUDIO)
-                        == ApmConst.AudioProfiles.TMAP_CALL)) {
-                   ret = true;
-                }
-            }
-            Log.i(TAG, "isAospLeaVoipWarEnabled: " + ret);
-            return ret;
         }
 
         @Override
@@ -772,7 +743,7 @@ public class HeadsetService extends ProfileService {
                 SynchronousResultReceiver receiver) {
             try {
                 List<BluetoothDevice> defaultValue = new ArrayList<BluetoothDevice>(0);
-                if (ApmConstIntf.getQtiLeAudioEnabled() || isAospLeaVoipWarEnabled()) {
+                if (ApmConstIntf.getQtiLeAudioEnabled()) {
                     Log.d(TAG, "getConnectedDevicesWithAttribution(): Adv Audio enabled");
                     CallAudioIntf mCallAudio = CallAudioIntf.get();
                     if (mCallAudio != null) {
@@ -797,7 +768,7 @@ public class HeadsetService extends ProfileService {
                 AttributionSource source, SynchronousResultReceiver receiver) {
             try {
                 List<BluetoothDevice> defaultValue = new ArrayList<BluetoothDevice>(0);
-                if (ApmConstIntf.getQtiLeAudioEnabled() || isAospLeaVoipWarEnabled()) {
+                if (ApmConstIntf.getQtiLeAudioEnabled()) {
                     Log.d(TAG, "getDevicesMatchingConnectionStates(): Adv Audio enabled");
                     CallAudioIntf mCallAudio = CallAudioIntf.get();
                     defaultValue = mCallAudio.getDevicesMatchingConnectionStates(states);
@@ -971,7 +942,7 @@ public class HeadsetService extends ProfileService {
         public void isAudioOn(AttributionSource source, SynchronousResultReceiver receiver) {
             try {
                 boolean defaultValue = false;
-                if(ApmConstIntf.getQtiLeAudioEnabled() || isAospLeaVoipWarEnabled()) {
+                if(ApmConstIntf.getQtiLeAudioEnabled()) {
                     Log.d(TAG, "isAudioOn(): Adv Audio enabled");
                     CallAudioIntf mCallAudio = CallAudioIntf.get();
                     defaultValue = mCallAudio.isAudioOn();
@@ -1008,8 +979,7 @@ public class HeadsetService extends ProfileService {
                   SynchronousResultReceiver receiver) {
             try {
                 int defaultValue = BluetoothHeadset.STATE_AUDIO_DISCONNECTED;
-                // Not fake getAudioState API for Aosp LeAudio VOIP WAR
-                if (ApmConstIntf.getQtiLeAudioEnabled()) {
+                if(ApmConstIntf.getQtiLeAudioEnabled()) {
                      Log.d(TAG, "getAudioState(): Adv Audio enabled");
                     CallAudioIntf mCallAudio = CallAudioIntf.get();
                     defaultValue = mCallAudio.getAudioState(device);
@@ -1129,7 +1099,7 @@ public class HeadsetService extends ProfileService {
             SynchronousResultReceiver receiver) {
             try {
                 boolean defaultValue = false;
-                if(ApmConstIntf.getQtiLeAudioEnabled() || isAospLeaVoipWarEnabled()) {
+                if(ApmConstIntf.getQtiLeAudioEnabled()) {
                      Log.d(TAG, "startScoUsingVirtualVoiceCall(): Adv Audio enabled");
                     CallAudioIntf mCallAudio = CallAudioIntf.get();
                     defaultValue = mCallAudio.startScoUsingVirtualVoiceCall();
@@ -1151,7 +1121,7 @@ public class HeadsetService extends ProfileService {
             SynchronousResultReceiver receiver) {
             try {
                  boolean defaultValue = false;
-                 if(ApmConstIntf.getQtiLeAudioEnabled() || isAospLeaVoipWarEnabled()) {
+                 if(ApmConstIntf.getQtiLeAudioEnabled()) {
                       Log.d(TAG, "stopScoUsingVirtualVoiceCall(): Adv Audio enabled");
                      CallAudioIntf mCallAudio = CallAudioIntf.get();
                      defaultValue = mCallAudio.stopScoUsingVirtualVoiceCall();
@@ -1239,7 +1209,7 @@ public class HeadsetService extends ProfileService {
         public void getActiveDevice(AttributionSource source, SynchronousResultReceiver receiver) {
             try {
                BluetoothDevice defaultValue = null;
-               if(ApmConstIntf.getQtiLeAudioEnabled() || isAospLeaVoipWarEnabled()) {
+               if(ApmConstIntf.getQtiLeAudioEnabled()) {
                    ActiveDeviceManagerServiceIntf activeDeviceManager = ActiveDeviceManagerServiceIntf.get();
                    defaultValue = activeDeviceManager.getActiveAbsoluteDevice(ApmConstIntf.AudioFeatures.CALL_AUDIO);
                    receiver.send(defaultValue);
