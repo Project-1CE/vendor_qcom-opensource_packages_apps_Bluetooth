@@ -465,8 +465,7 @@ public class HeadsetStateMachine extends StateMachine {
                 mHeadsetService.updateConnState(device, toState);
             }
             mHeadsetService.onConnectionStateChangedFromStateMachine(device, fromState, toState);
-            if(!ApmConstIntf.getQtiLeAudioEnabled() &&
-                    !(ApmConstIntf.getAospLeaEnabled() && mHeadsetService.isVoipLeaWarEnabled())) {
+            if(!ApmConstIntf.getQtiLeAudioEnabled()) {
                 Intent intent = new Intent(BluetoothHeadset.ACTION_CONNECTION_STATE_CHANGED);
                 intent.putExtra(BluetoothProfile.EXTRA_PREVIOUS_STATE, fromState);
                 intent.putExtra(BluetoothProfile.EXTRA_STATE, toState);
