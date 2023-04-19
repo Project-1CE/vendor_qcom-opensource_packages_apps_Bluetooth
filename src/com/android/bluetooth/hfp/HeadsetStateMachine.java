@@ -137,6 +137,7 @@ public class HeadsetStateMachine extends StateMachine {
     static final int RESUME_A2DP = 26;
     static final int AUDIO_SERVER_UP = 27;
     static final int SCO_RETRIAL_NOT_REQ = 28;
+    static final int SEND_CLCC_RESP_AFTER_VOIP_CALL = 29;
 
     static final int STACK_EVENT = 101;
     private static final int CLCC_RSP_TIMEOUT = 104;
@@ -464,7 +465,8 @@ public class HeadsetStateMachine extends StateMachine {
                 mHeadsetService.updateConnState(device, toState);
             }
             mHeadsetService.onConnectionStateChangedFromStateMachine(device, fromState, toState);
-            if(!ApmConstIntf.getQtiLeAudioEnabled()) {
+            if(!ApmConstIntf.getQtiLeAudioEnabled() &&
+                    !(ApmConstIntf.getAospLeaEnabled() && mHeadsetService.isVoipLeaWarEnabled())) {
                 Intent intent = new Intent(BluetoothHeadset.ACTION_CONNECTION_STATE_CHANGED);
                 intent.putExtra(BluetoothProfile.EXTRA_PREVIOUS_STATE, fromState);
                 intent.putExtra(BluetoothProfile.EXTRA_STATE, toState);
@@ -2662,6 +2664,9 @@ public class HeadsetStateMachine extends StateMachine {
             } else {
                 mNativeInterface.clccResponse(device, 1, 0, 0, 0, false, phoneNumber, type);
             }
+            mNativeInterface.clccResponse(device, 0, 0, 0, 0, false, "", 0);
+        } else if (hasMessages(SEND_CLCC_RESP_AFTER_VOIP_CALL)) {
+            Log.w(TAG, "processAtClcc: send OK response as VOIP call ended just now");
             mNativeInterface.clccResponse(device, 0, 0, 0, 0, false, "", 0);
         } else {
             // In Telecom call, ask Telecom to send send remote phone number

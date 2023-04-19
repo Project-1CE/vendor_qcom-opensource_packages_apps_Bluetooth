@@ -333,6 +333,7 @@ final class RemoteDevices {
             mAdvAudioUuids = new ArrayList<ParcelUuid>();
             mAdvAudioUpdateProp = true;
             uuidsByTransport = new HashMap<ParcelUuid, Integer>();
+            mUuids = null;
         }
 
         /**
@@ -855,8 +856,25 @@ final class RemoteDevices {
                         case AbstractionLayer.BT_PROPERTY_ADV_AUDIO_ACTION_UUID:
                             ParcelUuid[] tmpUuidArr =
                                 device.mAdvAudioUuids.toArray(new ParcelUuid[device.mAdvAudioUuids.size()]);
-                            device.mUuids = tmpUuidArr;
-                            debugLog("BT_PROPERTY_ADV_AUDIO_ACTION_UUID SiZE"
+                            int existUuidLen = 0;
+                            if (device.mUuids != null) {
+                                existUuidLen = device.mUuids.length;
+                            }
+                            debugLog( "--- Existing UuidLen  " + existUuidLen);
+                            if (existUuidLen != 0) {
+                                if (areUuidsEqual(tmpUuidArr, device.mUuids)) {
+                                    debugLog( "--- Skip uuids update for " + bdDevice.getAddress());
+                                } else {
+                                    debugLog( "--- Updating Existing Uuids  ");
+                                    ParcelUuid[] compltUuid = new ParcelUuid[tmpUuidArr.length + existUuidLen];
+                                    System.arraycopy(device.mUuids, 0, compltUuid, 0, existUuidLen);
+                                    System.arraycopy(tmpUuidArr, 0, compltUuid, existUuidLen, tmpUuidArr.length);
+                                    device.mUuids = compltUuid;
+                                }
+                            }  else {
+                                device.mUuids = tmpUuidArr;
+                            }
+                            debugLog("BT_PROPERTY_ADV_AUDIO_ACTION_UUID SiZE "
                                 + tmpUuidArr.length +
                                 " Device uuid size " + device.mUuids.length);
                             device.mAdvAudioUuids.clear();
@@ -893,10 +911,12 @@ final class RemoteDevices {
                                 + bdDevice.getAddress() + " addrValid "
                                 + device.mBdAddrValid);
                             break;
-                        case AbstractionLayer.BT_PROPERTY_ADV_AUDIO_ID_BD_ADDR:
+                        case AbstractionLayer.BT_PROPERTY_REM_DEV_IDENT_BD_ADDR:
                             device.mMapBdAddress = val;
-                            debugLog("BT_PROPERTY_ADV_AUDIO_ID_BD_ADDR Remote Address MAP is:"
+                            debugLog("BT_PROPERTY_REM_DEV_IDENT_BD_ADDR Remote Address MAP is:"
                                 + Utils.getAddressStringFromByte(val));
+                            break;
+
                         case AbstractionLayer.BT_PROPERTY_REMOTE_RSSI:
                             // RSSI from hal is in one byte
                             device.mRssi = val[0];
