@@ -29,7 +29,6 @@ aosp_vs_qva_java_defaults {
              static_libs: [
                 "bluetooth-protos-lite",
              ],
-             srcs: [":statslog-bluetooth-java-gen"],
            }
         }
     }
@@ -53,6 +52,7 @@ android_app {
     srcs: [
         "src/**/*.java",
         ":vendor_qcom_opensource_commonsys_bluetooth_ext_packages_apps_bluetooth_ext",
+        ":statslog-bluetooth-java-gen",
     ],
     exclude_srcs: [
         "src/com/android/bluetooth/directionfinder/*.java",
