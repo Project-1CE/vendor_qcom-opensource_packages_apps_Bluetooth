@@ -105,6 +105,7 @@ import static com.android.bluetooth.Utils.enforceDumpPermission;
 import static com.android.bluetooth.Utils.enforceLocalMacAddressPermission;
 import static com.android.bluetooth.Utils.hasBluetoothPrivilegedPermission;
 import static com.android.bluetooth.Utils.isPackageNameAccurate;
+import static com.android.bluetooth.Utils.getAnonymizedUuid;
 
 import android.annotation.NonNull;
 import android.annotation.RequiresPermission;
@@ -1851,7 +1852,8 @@ public class AdapterService extends Service {
         synchronized (mBluetoothServerSockets) {
             if (mBluetoothServerSockets.containsKey(uuid.getUuid())) {
                 Log.d(TAG, String.format(
-                        "Cannot start RFCOMM listener: UUID %s already in use.", uuid.getUuid()));
+                        "Cannot start RFCOMM listener: UUID %s already in use.",
+                        getAnonymizedUuid(uuid.toString())));
                 return BluetoothStatusCodes.RFCOMM_LISTENER_START_FAILED_UUID_IN_USE;
             }
         }
@@ -1873,7 +1875,8 @@ public class AdapterService extends Service {
 
             if (listenerData == null) {
                 Log.d(TAG, String.format(
-                        "Cannot stop RFCOMM listener: UUID %s is not registered.", uuid.getUuid()));
+                        "Cannot stop RFCOMM listener: UUID %s is not registered.",
+                        getAnonymizedUuid(uuid.toString())));
                 return BluetoothStatusCodes.RFCOMM_LISTENER_OPERATION_FAILED_NO_MATCHING_SERVICE_RECORD;
             }
 
