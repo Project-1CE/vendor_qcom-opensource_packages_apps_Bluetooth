@@ -129,6 +129,7 @@ import android.bluetooth.BluetoothProfile;
 import android.bluetooth.BluetoothProtoEnums;
 import android.bluetooth.BluetoothSap;
 import android.bluetooth.BluetoothServerSocket;
+import android.bluetooth.BluetoothSinkAudioPolicy;
 import android.bluetooth.BluetoothSocket;
 import android.bluetooth.BluetoothStatusCodes;
 import android.bluetooth.BluetoothUuid;
@@ -4113,6 +4114,21 @@ public class AdapterService extends Service {
         }
 
         @Override
+        public void isRequestAudioPolicyAsSinkSupported(BluetoothDevice device,
+                AttributionSource source, SynchronousResultReceiver receiver) {
+        }
+
+        @Override
+        public void requestAudioPolicyAsSink(BluetoothDevice device, BluetoothSinkAudioPolicy policies,
+                AttributionSource source, SynchronousResultReceiver receiver) {
+        }
+
+        @Override
+        public void getRequestedAudioPolicyAsSink(BluetoothDevice device,
+                AttributionSource source, SynchronousResultReceiver receiver) {
+        }
+
+        @Override
         public void requestActivityInfo(IBluetoothActivityEnergyInfoListener listener,
                     AttributionSource source) {
             BluetoothActivityEnergyInfo info = reportActivityInfo(source);
@@ -4872,8 +4888,9 @@ public class AdapterService extends Service {
                         Log.i(TAG, "getQtiLeAudioEnabled() is true, get A2DP active dev from APM");
                         ActiveDeviceManagerServiceIntf activeDeviceManager =
                                                    ActiveDeviceManagerServiceIntf.get();
+                        Log.i(TAG, "getActiveAbsoluteDevice for Media from APM");
                         defaultValue = activeDeviceManager.
-                                  getActiveDevice(ApmConstIntf.AudioFeatures.MEDIA_AUDIO);
+                                   getActiveAbsoluteDevice(ApmConstIntf.AudioFeatures.MEDIA_AUDIO);
                         activeDevices.add(defaultValue);
                     } else {
                         activeDevices.add(mA2dpService.getActiveDevice());
