@@ -313,12 +313,12 @@ public class ActiveDeviceManager {
                                                            ApmConstIntf.AudioFeatures.MEDIA_AUDIO);
                                     BluetoothDevice voiceActiveDevice = activeDeviceManager.getActiveAbsoluteDevice(
                                                            ApmConstIntf.AudioFeatures.CALL_AUDIO);
-                                    if (mediaActiveDevice != null) {
-                                        isMediaActive = (groupId == leAudioService.getGroupId(mediaActiveDevice));
-                                    }
-                                    if (voiceActiveDevice != null) {
-                                        isCallActive = (groupId == leAudioService.getGroupId(voiceActiveDevice));
-                                    }
+                                    Log.d(TAG, "mediaActiveDevice: " + mediaActiveDevice +
+                                                   " voiceActiveDevice: " + voiceActiveDevice);
+                                    isMediaActive =
+                                      (groupId == leAudioService.getGroupId(mediaActiveDevice));
+                                    isCallActive =
+                                      (groupId == leAudioService.getGroupId(voiceActiveDevice));
                                 }
 
                                 Log.w(TAG, "isMediaActive: " + isMediaActive +
@@ -837,7 +837,9 @@ public class ActiveDeviceManager {
         filter.addAction(BluetoothAdapter.ACTION_STATE_CHANGED);
         filter.addAction(BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED);
         filter.addAction(BluetoothHeadset.ACTION_CONNECTION_STATE_CHANGED);
-        filter.addAction(BluetoothLeAudio.ACTION_LE_AUDIO_CONNECTION_STATE_CHANGED);
+        if (!ApmConstIntf.getAospLeaEnabled()) {
+            filter.addAction(BluetoothLeAudio.ACTION_LE_AUDIO_CONNECTION_STATE_CHANGED);
+        }
         if(!ApmConstIntf.getQtiLeAudioEnabled()) {
             /*APM will send callback with Active Device update*/;
             Log.d(TAG, "start(): Registering for the active device changed intents");
@@ -1150,5 +1152,17 @@ public class ActiveDeviceManager {
             mHandler.obtainMessage(MESSAGE_A2DP_ACTION_CONNECTION_STATE_CHANGED,
                         intent).sendToTarget();
         }
+    }
+
+    public void onLeDeviceConnStateChange(BluetoothDevice device, int state,
+                                        int prevState) {
+        Log.d(TAG, "onLeDeviceConnStateChange: device: " + device +
+                    " state: " + state + " prevState: " + prevState);
+        Intent intent = new Intent(BluetoothLeAudio.ACTION_LE_AUDIO_CONNECTION_STATE_CHANGED);
+        intent.putExtra(BluetoothProfile.EXTRA_PREVIOUS_STATE, prevState);
+        intent.putExtra(BluetoothProfile.EXTRA_STATE, state);
+        intent.putExtra(BluetoothDevice.EXTRA_DEVICE, device);
+        mHandler.obtainMessage(MESSAGE_LE_AUDIO_ACTION_CONNECTION_STATE_CHANGED,
+                               intent).sendToTarget();
     }
 }

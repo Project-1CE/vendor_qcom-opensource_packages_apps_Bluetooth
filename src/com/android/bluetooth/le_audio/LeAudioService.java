@@ -1592,7 +1592,7 @@ public class LeAudioService extends ProfileService {
     }
 
     @VisibleForTesting
-    synchronized void connectionStateChanged(BluetoothDevice device, int fromState,
+    synchronized public void connectionStateChanged(BluetoothDevice device, int fromState,
                                                      int toState) {
         Log.e(TAG, "connectionStateChanged: invocation. device=" + device
                 + " fromState=" + fromState + " toState=" + toState);
@@ -1734,7 +1734,7 @@ public class LeAudioService extends ProfileService {
             BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
             int toState = intent.getIntExtra(BluetoothProfile.EXTRA_STATE, -1);
             int fromState = intent.getIntExtra(BluetoothProfile.EXTRA_PREVIOUS_STATE, -1);
-            connectionStateChanged(device, fromState, toState);
+            Log.d(TAG,"Connection state updated via api call, ignoring intent");
         }
     }
 
