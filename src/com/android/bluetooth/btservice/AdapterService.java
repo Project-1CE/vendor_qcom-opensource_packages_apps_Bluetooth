@@ -1931,6 +1931,10 @@ public class AdapterService extends Service {
             PendingIntent intent, AttributionSource attributionSource) {
         BluetoothServerSocket bluetoothServerSocket;
 
+        /* Already bt cleanup might done, we can’t continue rfcomm connections*/
+        if (mAdapter == null) {
+          return;
+        }
         try {
             bluetoothServerSocket =
                     mAdapter.listenUsingRfcommWithServiceRecord(name, uuid);

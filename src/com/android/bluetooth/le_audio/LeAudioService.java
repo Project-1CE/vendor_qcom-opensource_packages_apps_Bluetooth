@@ -426,6 +426,12 @@ public class LeAudioService extends ProfileService {
             Log.e(TAG, "Cannot connect to " + device + " : CONNECTION_POLICY_FORBIDDEN");
             return false;
         }
+
+        if (mAdapterService == null) {
+            Log.e(TAG, "mAdapterService is null, return");
+            return false;
+        }
+
         ParcelUuid[] featureUuids = mAdapterService.getRemoteUuids(device);
         if (!ArrayUtils.contains(featureUuids, BluetoothUuid.LE_AUDIO)) {
             Log.e(TAG, "Cannot connect to " + device + " : Remote does not have LE_AUDIO UUID");
@@ -930,6 +936,16 @@ public class LeAudioService extends ProfileService {
          for (Map.Entry<BluetoothDevice, Integer> entry : mDeviceGroupIdMap.entrySet()) {
              Log.d(TAG, "Device " + entry.getKey() + " grp " + entry.getValue());
              if (entry.getValue() == groupId) {
+                 AcmServIntf mAcmService = AcmServIntf.get();
+                 BluetoothDevice device = entry.getKey();
+                 if (mAcmService != null) {
+                     int state = mAcmService.getConnectionState(device);
+                     if (state == BluetoothProfile.STATE_DISCONNECTED ||
+                         state == BluetoothProfile.STATE_DISCONNECTING) {
+                         Log.d(TAG,"Group lead device is disconnected: " + device);
+                         continue;
+                     }
+                 }
                  if (groupId == mLeActiveGroupID) {
                      first_group_device = entry.getKey();
                      break;
@@ -2232,6 +2248,7 @@ public class LeAudioService extends ProfileService {
 
         @RequiresPermission(android.Manifest.permission.BLUETOOTH_CONNECT)
         private LeAudioService getService(AttributionSource source) {
+            Log.d(TAG, "BluetoothLeAudioBinder: getService()");
             if (!Utils.checkServiceAvailable(mService, TAG)
                     || !Utils.checkCallerIsSystemOrActiveOrManagedUser(mService, TAG)
                     || !Utils.checkConnectPermissionForDataDelivery(mService, source, TAG)) {
@@ -2241,11 +2258,13 @@ public class LeAudioService extends ProfileService {
         }
 
         BluetoothLeAudioBinder(LeAudioService svc) {
+            Log.d(TAG, "BluetoothLeAudioBinder: " + svc);
             mService = svc;
         }
 
         @Override
         public void cleanup() {
+            Log.d(TAG, "BluetoothLeAudioBinder: cleanup");
             mService = null;
         }
 
