@@ -12,10 +12,6 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
- * Changes from Qualcomm Innovation Center are provided under the following license:
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
- * SPDX-License-Identifier: BSD-3-Clause-Clear
  */
 
 package com.android.bluetooth.a2dp;
@@ -78,7 +74,6 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.lang.reflect.Method;
 
 /**
  * Provides Bluetooth A2DP profile, as a service in the Bluetooth application.
@@ -1685,8 +1680,6 @@ public class A2dpService extends ProfileService {
 
         long cs4 = codecConfig.getCodecSpecific4();
         GattService mGattService = GattService.getGattService();
-        boolean isLowLatencyModeEnabled = false;
-        Object objStreamAudioService = null;
 
         if (mAlsDisabled) {
             if (cs4 > 0 && codecConfig.getCodecType() ==
@@ -1694,36 +1687,6 @@ public class A2dpService extends ProfileService {
                 Log.e(TAG, "setCodecConfigPreference: ALS trigger is ignored");
                 return;
             }
-        }
-
-        try {
-            Class streamAudioService = Class.forName("com.android.bluetooth.apm.StreamAudioService");
-            Method method = streamAudioService.getDeclaredMethod("getStreamAudioService");
-            objStreamAudioService = method.invoke(null);
-            if (objStreamAudioService != null) {
-                Log.d(TAG, " setCodecConfigPreference, objStreamAudioService not null:");
-            } else {
-                Log.d(TAG, " setCodecConfigPreference, objStreamAudioService is null:");
-            }
-        } catch (Exception ex) {
-            Log.w(TAG, ex);
-        }
-        try {
-            Class streamAudioService = Class.forName("com.android.bluetooth.apm.StreamAudioService");
-            Method method = streamAudioService.getDeclaredMethod("isLowLatencyModeEnabled");
-            if (objStreamAudioService != null) {
-                Log.d(TAG, " setCodecConfigPreference, invoke isLowLatencyModeEnabled");
-                isLowLatencyModeEnabled = (boolean) method.invoke(objStreamAudioService);
-            }
-            Log.d(TAG, " setCodecConfigPreference, isLowLatencyModeEnabled:"
-                  + isLowLatencyModeEnabled);
-        } catch (Exception ex) {
-            Log.w(TAG, ex);
-        }
-
-        if (cs4 > 0 && isLowLatencyModeEnabled) {
-            Log.e(TAG, "setCodecConfigPreference: LowLatencyModeEnabled, return");
-            return;
         }
 
         if(cs4 > 0 && mGattService != null) {
@@ -1769,8 +1732,6 @@ public class A2dpService extends ProfileService {
                     + Objects.toString(codecConfig));
         }
         long cs4 = codecConfig.getCodecSpecific4();
-        boolean isLowLatencyModeEnabled = false;
-        Object objStreamAudioService = null;
 
         if (mAlsDisabled) {
             if (cs4 > 0 && codecConfig.getCodecType() ==
@@ -1778,36 +1739,6 @@ public class A2dpService extends ProfileService {
                 Log.e(TAG, "setCodecConfigPreferenceA2dp: ALS trigger is ignored");
                 return;
             }
-        }
-
-        try {
-            Class streamAudioService = Class.forName("com.android.bluetooth.apm.StreamAudioService");
-            Method method = streamAudioService.getDeclaredMethod("getStreamAudioService");
-            objStreamAudioService = method.invoke(null);
-            if (objStreamAudioService != null) {
-                Log.d(TAG, " setCodecConfigPreferenceA2dp, objStreamAudioService not null:");
-            } else {
-                Log.d(TAG, " setCodecConfigPreferenceA2dp, objStreamAudioService is null:");
-            }
-        } catch (Exception ex) {
-            Log.w(TAG, ex);
-        }
-        try {
-            Class streamAudioService = Class.forName("com.android.bluetooth.apm.StreamAudioService");
-            Method method = streamAudioService.getDeclaredMethod("isLowLatencyModeEnabled");
-            if (objStreamAudioService != null) {
-                Log.d(TAG, " setCodecConfigPreferenceA2dp, invoke isLowLatencyModeEnabled");
-                isLowLatencyModeEnabled = (boolean) method.invoke(objStreamAudioService);
-            }
-            Log.d(TAG, "setCodecConfigPreferenceA2dp: isLowLatencyModeEnabled:"
-                  + isLowLatencyModeEnabled);
-        } catch (Exception ex) {
-            Log.w(TAG, ex);
-        }
-
-        if (cs4 > 0 && isLowLatencyModeEnabled) {
-            Log.e(TAG, "setCodecConfigPreferenceA2dp: LowLatencyModeEnabled, return");
-            return;
         }
 
         GattService mGattService = GattService.getGattService();
