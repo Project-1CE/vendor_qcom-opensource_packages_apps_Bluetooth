@@ -1252,12 +1252,6 @@ public class LeAudioService extends ProfileService {
                 activeDevices.add(1, mActiveAudioInDevice);
             }
         }*/
-
-        if ((ActiveAudioMediaProfile == ApmConst.AudioProfiles.BROADCAST_LE) &&
-                (ActiveAudioCallProfile == ApmConst.AudioProfiles.TMAP_CALL ||
-                ActiveAudioCallProfile == ApmConst.AudioProfiles.BAP_CALL)) {
-            mActiveAudioOutDevice = mActiveAudioInDevice;
-        }
         activeDevices.add(0, mActiveAudioOutDevice);
         int activeGid = getGroupId(mActiveAudioOutDevice);
         if (activeGid < INVALID_SET_ID) {
