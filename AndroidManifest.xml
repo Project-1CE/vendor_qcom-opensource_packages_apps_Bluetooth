@@ -455,15 +455,6 @@
                 <action android:name="android.bluetooth.IBluetoothLeAudio" />
             </intent-filter>
         </service>
-        <!--  Hearing Aid Profile (HAP) client Profile Service  -->
-        <service android:process="@string/process"
-             android:name="com.android.bluetooth.hap.HapClientService"
-             android:enabled="@bool/profile_supported_hap_client"
-             android:exported="true">
-            <intent-filter>
-                <action android:name="android.bluetooth.IBluetoothHapClient"/>
-            </intent-filter>
-        </service>
         <service
             android:process="@string/process"
             android:name = "com.android.bluetooth.lebroadcast.BassClientService"

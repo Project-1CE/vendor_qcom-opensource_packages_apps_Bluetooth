@@ -78,7 +78,6 @@ import android.os.SystemProperties;
 import android.util.Log;
 
 import com.android.bluetooth.le_audio.LeAudioService;
-import com.android.bluetooth.hap.HapClientService;
 import com.android.bluetooth.a2dp.A2dpService;
 import com.android.bluetooth.a2dpsink.A2dpSinkService;
 import com.android.bluetooth.apm.ApmConstIntf;
@@ -418,7 +417,7 @@ class PhonePolicy {
             ParcelUuid.fromString("00006AD0-0000-1000-8000-00805F9B34FB");
 
         ParcelUuid ADV_AUDIO_HEARINGAID =
-            ParcelUuid.fromString("00001854-0000-1000-8000-00805F9B34FB");
+            ParcelUuid.fromString("00006AD2-0000-1000-8000-00805F9B34FB");
 
         ParcelUuid ADV_AUDIO_P_MEDIA =
             ParcelUuid.fromString("00006AD1-0000-1000-8000-00805F9B34FB");
@@ -446,7 +445,6 @@ class PhonePolicy {
         PanService panService = mFactory.getPanService();
         HearingAidService hearingAidService = mFactory.getHearingAidService();
         LeAudioService leAudioService = mFactory.getLeAudioService();
-        HapClientService hapClientService = mFactory.getHapClientService();
         CsipSetCoordinatorService csipSetCooridnatorService =
             mFactory.getCsipSetCoordinatorService();
         VolumeControlService volumeControlService = mFactory.getVolumeControlService();
@@ -562,15 +560,6 @@ class PhonePolicy {
                 }
             }
         }
-
-        if ((hapClientService != null) && ArrayUtils.contains(uuids,
-                 BluetoothUuid.HAS) && (hapClientService.getConnectionPolicy(device)
-                 == BluetoothProfile.CONNECTION_POLICY_UNKNOWN)) {
-             debugLog("setting hearing access profile priority for device " + device);
-             mAdapterService.getDatabase().setProfileConnectionPolicy(device,
-                     BluetoothProfile.HAP_CLIENT, BluetoothProfile.CONNECTION_POLICY_ALLOWED);
-         }
-
         if ((bcService != null) && ArrayUtils.contains(uuids,
                 BluetoothUuid.BASS) && (bcService.getConnectionPolicy(device)
                 == BluetoothProfile.CONNECTION_POLICY_UNKNOWN)) {

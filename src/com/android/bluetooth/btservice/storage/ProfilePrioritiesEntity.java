@@ -72,7 +72,6 @@ class ProfilePrioritiesEntity {
     public int map_client_connection_policy;
     public int bc_profile_priority;
     public int csip_set_coordinator_connection_policy;
-    public int hap_client_connection_policy;
     public int le_audio_connection_policy;
     public int bass_client_connection_policy;
     public int volume_control_connection_policy;
@@ -92,7 +91,6 @@ class ProfilePrioritiesEntity {
         map_client_connection_policy = BluetoothProfile.CONNECTION_POLICY_UNKNOWN;
         bc_profile_priority = BluetoothProfile.CONNECTION_POLICY_UNKNOWN;
         csip_set_coordinator_connection_policy = BluetoothProfile.CONNECTION_POLICY_UNKNOWN;
-        hap_client_connection_policy = BluetoothProfile.CONNECTION_POLICY_UNKNOWN;
         le_audio_connection_policy = BluetoothProfile.CONNECTION_POLICY_UNKNOWN;
         bass_client_connection_policy = BluetoothProfile.CONNECTION_POLICY_UNKNOWN;
         volume_control_connection_policy = BluetoothProfile.CONNECTION_POLICY_UNKNOWN;
@@ -114,7 +112,6 @@ class ProfilePrioritiesEntity {
                 .append("|SAP=").append(sap_connection_policy)
                 .append("|HEARING_AID=").append(hearing_aid_connection_policy)
                 .append("|LE_AUDIO=").append(le_audio_connection_policy)
-                .append("|HAP=").append(hap_client_connection_policy)
                 .append("|LE_BROADCAST_ASSISTANT=").append(bass_client_connection_policy)
                 .append("|VOLUME_CONTROL=").append(volume_control_connection_policy);
 

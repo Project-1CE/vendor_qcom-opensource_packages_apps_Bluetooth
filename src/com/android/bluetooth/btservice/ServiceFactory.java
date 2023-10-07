@@ -63,7 +63,6 @@ import com.android.bluetooth.hid.HidHostService;
 import com.android.bluetooth.lebroadcast.BassClientService;
 import com.android.bluetooth.pan.PanService;
 import com.android.bluetooth.le_audio.LeAudioService;
-import com.android.bluetooth.hap.HapClientService;
 import com.android.bluetooth.vc.VolumeControlService;
 
 import android.util.Log;
@@ -117,10 +116,6 @@ public class ServiceFactory {
 
     public LeAudioService getLeAudioService() {
         return LeAudioService.getLeAudioService();
-    }
-
-    public HapClientService getHapClientService() {
-        return HapClientService.getHapClientService();
     }
 
     public BassClientService getBassClientService() {

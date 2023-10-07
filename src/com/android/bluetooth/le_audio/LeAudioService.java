@@ -13,11 +13,6 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
- * Changes from Qualcomm Innovation Center are provided under the following license:
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
- * SPDX-License-Identifier: BSD-3-Clause-Clear
- *
  */
 
 package com.android.bluetooth.le_audio;
@@ -68,7 +63,6 @@ import com.android.bluetooth.Utils;
 import com.android.bluetooth.btservice.AdapterService;
 import com.android.bluetooth.btservice.ProfileService;
 import com.android.bluetooth.btservice.ServiceFactory;
-import com.android.bluetooth.hap.HapClientService;
 import com.android.bluetooth.btservice.storage.DatabaseManager;
 import com.android.bluetooth.csip.CsipSetCoordinatorService;
 import com.android.bluetooth.lebroadcast.BassClientService;
@@ -489,13 +483,9 @@ public class LeAudioService extends ProfileService {
             }
         }
 
-        if (!mPtsTmapConfBandC && 
-            mPtsMediaAndVoice == 2) {
+        if (!mPtsTmapConfBandC && mPtsMediaAndVoice == 2) {
             if (mCallAudio != null) {
-                Log.d(TAG, "connect(): Connecting call AUdio");
                 mCallAudio.connect(device);
-            } else {
-                Log.d(TAG, "call AUdio is null");
             }
         }
 
@@ -2013,17 +2003,6 @@ public class LeAudioService extends ProfileService {
                 "Need BLUETOOTH_PRIVILEGED permission");
         if (DBG) {
             Log.d(TAG, "Saved connectionPolicy " + device + " = " + connectionPolicy);
-        }
-
-        ParcelUuid[] featureUuids = mAdapterService.getRemoteUuids(device);
-        if (ArrayUtils.contains(featureUuids, BluetoothUuid.HAS)) {
-            Log.e(TAG, ": Remote has Hearing Aid UUID");
-           //Calling HapClient Setconnection policy
-           HapClientService hapClientService = HapClientService.getHapClientService();
-           if (hapClientService != null) {
-              hapClientService.setConnectionPolicy(device, connectionPolicy);
-              Log.d(TAG, "Hap connectionPolicy ");
-           }
         }
 
         if (!mDatabaseManager.setProfileConnectionPolicy(device, BluetoothProfile.LE_AUDIO,

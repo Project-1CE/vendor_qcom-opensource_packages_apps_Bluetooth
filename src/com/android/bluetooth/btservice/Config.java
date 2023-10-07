@@ -89,7 +89,6 @@ import com.android.bluetooth.sap.SapService;
 import com.android.bluetooth.apm.ApmConstIntf;
 import com.android.bluetooth.ba.BATService;
 import com.android.bluetooth.le_audio.LeAudioService;
-import com.android.bluetooth.hap.HapClientService;
 import com.android.bluetooth.vc.VolumeControlService;
 
 import java.util.ArrayList;
@@ -232,9 +231,6 @@ public class Config {
                             R.bool.profile_supported_le_audio,
                             (1L << BluetoothProfile.LE_AUDIO |
                              1L << BluetoothProfile.LE_AUDIO_BROADCAST)),
-                    new ProfileConfig(HapClientService.class,
-                            R.bool.profile_supported_hap_client,
-                            (1L << BluetoothProfile.HAP_CLIENT)),
                     new ProfileConfig(VolumeControlService.class,
                             R.bool.profile_supported_volume_control,
                             (1L << BluetoothProfile.VOLUME_CONTROL))
@@ -515,16 +511,6 @@ public class Config {
                     }
                     Log.d(TAG, "LeAudioService profile mask: " + mask);
                     return mask;
-                } else if (profile == HapClientService.class) {
-                  long mask = config.mMask;
-                  HapClientService hapClientService = HapClientService.getHapClientService();
-                  if (hapClientService != null) {
-                     if (hapClientService.isEnabled() == false) {
-                        mask &= ~(1L << BluetoothProfile.HAP_CLIENT);
-                     }
-                  }
-                  Log.d(TAG, "HapClientService profile mask: " + mask);
-                  return mask;
                 }
                 return config.mMask;
             }
@@ -576,8 +562,6 @@ public class Config {
             return addAospAudioProfiles(serviceName);
         } if (serviceName.equals("VolumeControlService")) {
             return VolumeControlService.isEnabled();
-        } if (serviceName.equals("HapClientService")) {
-            return addAospAudioProfiles(serviceName);
         }
 
         // always return true for other profiles
@@ -599,10 +583,6 @@ public class Config {
         if (serviceName.equals("BassClientService") &&
                 adapterService.isLeAudioBroadcastAssistantSupported() ==
                 BluetoothStatusCodes.FEATURE_NOT_SUPPORTED) {
-            return false;
-        }
-        if (serviceName.equals("HapClientService") && (adapterService.isHapClientSupported() ==
-               BluetoothStatusCodes.FEATURE_NOT_SUPPORTED)) {
             return false;
         }
         return true;
