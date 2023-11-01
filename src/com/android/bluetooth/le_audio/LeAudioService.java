@@ -1242,11 +1242,21 @@ public class LeAudioService extends ProfileService {
 
         ActiveDeviceManagerServiceIntf activeDeviceManager =
                                             ActiveDeviceManagerServiceIntf.get();
-        mActiveAudioOutDevice =
+        BluetoothDevice outDevice = activeDeviceManager.getActiveAbsoluteDevice(ApmConstIntf.AudioFeatures.MEDIA_AUDIO);
+        BluetoothDevice inDevice = activeDeviceManager.getActiveAbsoluteDevice(ApmConstIntf.AudioFeatures.CALL_AUDIO);
+        mActiveAudioOutDevice = null;
+        mActiveAudioInDevice = null;
+        if (outDevice != null &&
+            getConnectionState(outDevice) ==  BluetoothProfile.STATE_CONNECTED)
+            mActiveAudioOutDevice = outDevice;
+        if (inDevice != null &&
+            getConnectionState(inDevice) == BluetoothProfile.STATE_CONNECTED)
+            mActiveAudioInDevice = inDevice;
+/*        mActiveAudioOutDevice =
             activeDeviceManager.getActiveAbsoluteDevice(ApmConstIntf.AudioFeatures.MEDIA_AUDIO);
         mActiveAudioInDevice =
             activeDeviceManager.getActiveAbsoluteDevice(ApmConstIntf.AudioFeatures.CALL_AUDIO);
-
+*/
         int ActiveAudioMediaProfile =
             activeDeviceManager.getActiveProfile(ApmConstIntf.AudioFeatures.MEDIA_AUDIO);
         int ActiveAudioCallProfile =
