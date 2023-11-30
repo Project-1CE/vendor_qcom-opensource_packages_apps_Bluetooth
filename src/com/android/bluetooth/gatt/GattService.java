@@ -3116,13 +3116,17 @@ public class GattService extends ProfileService {
                 this, attributionSource, "GattService unregisterScanner")) {
             return;
         }
-
-        if (DBG) {
-            Log.d(TAG, "unregisterScanner() - scannerId=" + scannerId);
+        if (mScannerMap.getAppScanStatsById(scannerId) != null) {
+            if (DBG) {
+                Log.d(TAG, "unregisterScanner() - scannerId = " + scannerId);
+            }
+            mScannerMap.remove(scannerId);
+            mScanManager.unregisterScanner(scannerId);
         }
-        mScannerMap.remove(scannerId);
-        mScanManager.unregisterScanner(scannerId);
-    }
+        else if (DBG) {
+            Log.d(TAG, "unregisterScanner() can't find scannerId = " + scannerId);
+        }
+     }
 
     private List<String> getAssociatedDevices(String callingPackage, UserHandle userHandle) {
         if (mCompanionManager == null) {
@@ -3323,19 +3327,25 @@ public class GattService extends ProfileService {
                 this, attributionSource, "GattService stopScan")) {
             return;
         }
+
         int scanQueueSize =
                 mScanManager.getBatchScanQueue().size() + mScanManager.getRegularScanQueue().size();
         if (DBG) {
-            Log.d(TAG, "stopScan() - queue size =" + scanQueueSize);
+            Log.d(TAG, "stopScan() - queue size = " + scanQueueSize);
         }
 
         AppScanStats app = null;
         app = mScannerMap.getAppScanStatsById(scannerId);
-        if (app != null) {
-            app.recordScanStop(scannerId);
+        if (app == null) {
+            if (DBG)
+                Log.d(TAG, "stopScan() - Can't find scannerId = " + scannerId);
+            return;
         }
-        if (mScanManager != null) {
-            mScanManager.stopScan(scannerId);
+        else {
+            app.recordScanStop(scannerId);
+            if (mScanManager != null) {
+                mScanManager.stopScan(scannerId);
+            }
         }
     }
 
