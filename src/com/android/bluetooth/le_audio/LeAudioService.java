@@ -1257,29 +1257,12 @@ public class LeAudioService extends ProfileService {
         mActiveAudioInDevice =
             activeDeviceManager.getActiveAbsoluteDevice(ApmConstIntf.AudioFeatures.CALL_AUDIO);
 */
-        int ActiveAudioMediaProfile =
-            activeDeviceManager.getActiveProfile(ApmConstIntf.AudioFeatures.MEDIA_AUDIO);
-        int ActiveAudioCallProfile =
-            activeDeviceManager.getActiveProfile(ApmConstIntf.AudioFeatures.CALL_AUDIO);
 
-        if ((ActiveAudioMediaProfile == ApmConst.AudioProfiles.BROADCAST_LE) &&
-                (ActiveAudioCallProfile == ApmConst.AudioProfiles.TMAP_CALL ||
-                ActiveAudioCallProfile == ApmConst.AudioProfiles.BAP_CALL)) {
-            mActiveAudioOutDevice = mActiveAudioInDevice;
-        }
         activeDevices.add(0, mActiveAudioOutDevice);
-        int activeGid = getGroupId(mActiveAudioOutDevice);
-        if (activeGid < INVALID_SET_ID) {
-            for (BluetoothDevice dev : getGroupDevices(activeGid)) {
-                if (!dev.equals(mActiveAudioOutDevice)) {
-                    activeDevices.add(1, dev);
-                }
-            }
-        } else {
-            activeDevices.add(1, mActiveAudioInDevice);
-        }
-        Log.d(TAG, "getActiveDevices: LeAudio devices: Dev_1[" + activeDevices.get(0) +
-                                              "] - Dev_2[" + activeDevices.get(1) + "]");
+        activeDevices.add(1, mActiveAudioInDevice);
+
+        Log.d(TAG, "getActiveDevices: LeAudio devices: Out[" + activeDevices.get(0) +
+                                              "] - In[" + activeDevices.get(1) + "]");
 
         return activeDevices;
     }
