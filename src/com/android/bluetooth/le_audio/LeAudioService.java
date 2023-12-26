@@ -1201,7 +1201,6 @@ public class LeAudioService extends ProfileService {
         boolean isInCall =
                 mCallAudio != null && mCallAudio.isVoiceOrCallActive();
 
-        boolean isDuMoEnabled = Utils.isDualModeAudioEnabled();
         ActiveDeviceManagerServiceIntf activeDeviceManager =
                                             ActiveDeviceManagerServiceIntf.get();
         if (device == null || ((ApmConst.AudioProfiles.HAP_LE & VoiceProfID) ==
@@ -1209,14 +1208,8 @@ public class LeAudioService extends ProfileService {
             ((ApmConst.AudioProfiles.BAP_CALL & VoiceProfID) ==
                                           ApmConst.AudioProfiles.BAP_CALL)) {
             if (isInCall) {
-                if (isDuMoEnabled) {
-                    Log.d(TAG, "Telephony request for Active device, DualMode");
-                    activeDeviceManager.setActiveDevice(device,
-                                                ApmConstIntf.AudioFeatures.CALL_AUDIO, true);
-                } else {
-                    activeDeviceManager.setActiveDeviceBlocking(device,
+                activeDeviceManager.setActiveDeviceBlocking(device,
                                                 ApmConstIntf.AudioFeatures.CALL_AUDIO);
-                }
             } else {
                 activeDeviceManager.setActiveDevice(device,
                                              ApmConstIntf.AudioFeatures.CALL_AUDIO);
@@ -1228,15 +1221,9 @@ public class LeAudioService extends ProfileService {
             ((ApmConst.AudioProfiles.BAP_MEDIA & MediaProfID) ==
                                          ApmConst.AudioProfiles.BAP_MEDIA)) {
             if (isInCall) {
-                if (isDuMoEnabled) {
-                    activeDeviceManager.setActiveDevice(device,
-                                               ApmConstIntf.AudioFeatures.MEDIA_AUDIO, true);
-                } else {
-                    activeDeviceManager.setActiveDeviceBlocking(device,
-                                                 ApmConstIntf.AudioFeatures.MEDIA_AUDIO);
-                }
+                activeDeviceManager.setActiveDeviceBlocking(device,
+                                             ApmConstIntf.AudioFeatures.MEDIA_AUDIO);
             } else {
-                Log.d(TAG, "Telephony request for Active device, DualMode");
                 activeDeviceManager.setActiveDevice(device,
                                           ApmConstIntf.AudioFeatures.MEDIA_AUDIO);
             }
@@ -1253,7 +1240,6 @@ public class LeAudioService extends ProfileService {
             return false;
         }
         BluetoothDevice fetchCurrentActiveDevice = null;
-        boolean isDuMoEnabled = Utils.isDualModeAudioEnabled();
 
         if (device == null) {
             fetchCurrentActiveDevice = mPreviousActiveDevice;
@@ -1280,28 +1266,16 @@ public class LeAudioService extends ProfileService {
                                           ApmConst.AudioProfiles.HAP_LE) ||
             ((ApmConst.AudioProfiles.BAP_CALL & VoiceProfID) ==
                                           ApmConst.AudioProfiles.BAP_CALL)) {
-            if (isDuMoEnabled) {
-                Log.d(TAG, " Avoiding Blocking call for DUMO");
-                activeDeviceManager.setActiveDevice(device,
-                                             ApmConstIntf.AudioFeatures.CALL_AUDIO);
-            } else {
-                activeDeviceManager.setActiveDeviceBlocking(device,
+            activeDeviceManager.setActiveDeviceBlocking(device,
                                             ApmConstIntf.AudioFeatures.CALL_AUDIO);
-            }
         }
 
         if (device == null || ((ApmConst.AudioProfiles.HAP_LE & MediaProfID) ==
                                                  ApmConst.AudioProfiles.HAP_LE) ||
             ((ApmConst.AudioProfiles.BAP_MEDIA & MediaProfID) ==
                                                  ApmConst.AudioProfiles.BAP_MEDIA)) {
-            if (isDuMoEnabled) {
-                Log.d(TAG, " Avoiding Blocking call for DUMO");
-                activeDeviceManager.setActiveDeviceBlocking(device,
-                                                 ApmConstIntf.AudioFeatures.MEDIA_AUDIO);
-            } else {
-                activeDeviceManager.setActiveDeviceBlocking(device,
+            activeDeviceManager.setActiveDeviceBlocking(device,
                                             ApmConstIntf.AudioFeatures.MEDIA_AUDIO);
-            }
         }
         return true;
     }

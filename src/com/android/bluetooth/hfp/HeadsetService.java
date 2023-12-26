@@ -106,8 +106,6 @@ import com.android.bluetooth.apm.ActiveDeviceManagerServiceIntf;
 import com.android.modules.utils.SynchronousResultReceiver;
 import com.android.bluetooth.cc.CCService;
 import com.android.bluetooth.acm.AcmService;
-import com.android.bluetooth.apm.StreamAudioService;
-
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -164,7 +162,6 @@ public class HeadsetService extends ProfileService {
     private int mSetMaxConfig;
     private BluetoothDevice mActiveDevice;
     private BluetoothDevice mTempActiveDevice;
-    private BluetoothDevice mTempDualModeActiveDevice;
     private boolean mSHOStatus = false;
     private AdapterService mAdapterService;
     private DatabaseManager mDatabaseManager;
@@ -194,7 +191,6 @@ public class HeadsetService extends ProfileService {
     private boolean mIsTwsPlusShoEnabled = false;
     private vendorhfservice  mVendorHf;
     private Context mContext = null;
-    private static final int BAP_CALL  = 0x10;
     private AudioServerStateCallback mServerStateCallback = new AudioServerStateCallback();
     private static final int AUDIO_CONNECTION_DELAY_DEFAULT = 100;
     private static final String ACTION_BATTERY_STATE_CHANGED = "android.bluetooth.action.BATTERY_STATE_CHANGED";
@@ -2364,37 +2360,7 @@ public class HeadsetService extends ProfileService {
             }
             if (mActiveDevice == null) {
                 Log.w(TAG, "startScoUsingVirtualVoiceCall: no active device");
-                if (Utils.isDualModeAudioEnabled()) {
-                    Log.i(TAG, "Dual mode is enabled");
-                    ActiveDeviceManagerServiceIntf mActiveDeviceManager =
-                            ActiveDeviceManagerServiceIntf.get();
-                    StreamAudioService mStreamAudioService =
-                            StreamAudioService.getStreamAudioService();
-                    if (mActiveDeviceManager != null) {
-                       mTempDualModeActiveDevice =
-                             mActiveDeviceManager.getActiveAbsoluteDevice(ApmConstIntf.AudioFeatures.CALL_AUDIO);
-                    }
-                    if (mStreamAudioService != null) {
-                       Log.i(TAG, "Setting ACM null device");
-                       int ret =
-                             mStreamAudioService.setActiveDevice(null,
-                                                                 BAP_CALL,
-                                                                 false);
-                    }
-                    if (mTempDualModeActiveDevice != null) {
-                        int ret  = setActiveDeviceHF(mTempDualModeActiveDevice);
-                        if (ret == ActiveDeviceManagerServiceIntf.SHO_SUCCESS) {
-                            //Active device is set. Initiate SCO.
-                            Log.i(TAG, "active device is set. Initiate SCO");
-                        } else {
-                            return false;
-                        }
-                    } else {
-                       return false;
-                    }
-                } else {
-                  return false;
-                }
+                return false;
             }
             mVirtualCallStarted = true;
             mSystemInterface.getHeadsetPhoneState().setIsCsCall(false);
@@ -2419,21 +2385,6 @@ public class HeadsetService extends ProfileService {
             mVirtualCallStarted = false;
             // 2. Send virtual phone state changed to close SCO
             phoneStateChanged(0, 0, HeadsetHalConstants.CALL_STATE_IDLE, "", 0, "", true);
-        }
-        if (Utils.isDualModeAudioEnabled()) {
-           StreamAudioService mStreamAudioService =
-                       StreamAudioService.getStreamAudioService();
-           if (mTempDualModeActiveDevice != null) {
-               if (mStreamAudioService != null) {
-                   Log.i(TAG, "Setting ACM device after voip");
-                   int ret =
-                        mStreamAudioService.setActiveDevice(mTempDualModeActiveDevice,
-                                                            BAP_CALL,
-                                                            false);
-               }
-               setActiveDeviceHF(null);
-               mTempDualModeActiveDevice = null;
-           }
         }
         return true;
     }
