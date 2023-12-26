@@ -1296,7 +1296,7 @@ public class LeAudioService extends ProfileService {
                                                  ApmConst.AudioProfiles.BAP_MEDIA)) {
             if (isDuMoEnabled) {
                 Log.d(TAG, " Avoiding Blocking call for DUMO");
-                activeDeviceManager.setActiveDevice(device,
+                activeDeviceManager.setActiveDeviceBlocking(device,
                                                  ApmConstIntf.AudioFeatures.MEDIA_AUDIO);
             } else {
                 activeDeviceManager.setActiveDeviceBlocking(device,

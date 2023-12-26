@@ -2380,8 +2380,6 @@ public class HeadsetService extends ProfileService {
                              mStreamAudioService.setActiveDevice(null,
                                                                  BAP_CALL,
                                                                  false);
-			           mHfpA2dpSyncInterface.suspendLeAudio(HeadsetA2dpSync.
-                                                       A2DP_SUSPENDED_BY_CS_CALL);
                     }
                     if (mTempDualModeActiveDevice != null) {
                         int ret  = setActiveDeviceHF(mTempDualModeActiveDevice);

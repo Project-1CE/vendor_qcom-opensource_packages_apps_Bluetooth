@@ -813,7 +813,6 @@ public class ActiveDeviceManager {
                 Log.d(TAG, "LEA device is source : " + bleDeviceInfo.isSource());
                 mWiredDeviceConnected = false;
                 BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
-                boolean isDuMoEnabled = Utils.isDualModeAudioEnabled();
                 BluetoothDevice dev = adapter.getRemoteDevice(bleDeviceInfo.getAddress());
                 ActiveDeviceManagerServiceIntf activeDeviceManager =
                                                     ActiveDeviceManagerServiceIntf.get();
@@ -824,8 +823,7 @@ public class ActiveDeviceManager {
                        activeDeviceManager.getActiveDevice(ApmConstIntf.AudioFeatures.CALL_AUDIO);
                     Log.d(TAG, "LEA active dev: " + dev + ", absolute device:" + AbsDevice);
                     Log.d(TAG, "current active dev:" + activeDevice);
-                    if ((Objects.equals(dev,activeDevice) && bleDeviceInfo.isSource()) ||
-                        (isDuMoEnabled && (Objects.equals(dev,AbsDevice) && bleDeviceInfo.isSource()))) {
+                    if (Objects.equals(dev,activeDevice) && bleDeviceInfo.isSource()) {
                         Log.d(TAG, "broadcast LEA device address: " + activeDevice);
                         broadcastLeActiveDeviceChange(AbsDevice);
                         onLeActiveDeviceChange(AbsDevice);

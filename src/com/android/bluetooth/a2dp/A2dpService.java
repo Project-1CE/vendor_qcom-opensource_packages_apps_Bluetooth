@@ -1744,28 +1744,6 @@ public class A2dpService extends ProfileService {
             }
         }
 
-        if (cs4 > 0 && Utils.isDualModeAudioEnabled()) {
-            MediaAudioIntf mMediaAudio = MediaAudioIntf.get();
-            if(mMediaAudio == null) {
-                return;
-            }
-
-            switch((int)(cs4 & APTX_MODE_MASK)) {
-                case APTX_HQ:
-                  Log.d(TAG, "setCodecConfigPreference: disable Gaming from ALS");
-                  mMediaAudio.disableGamingMode(device, 0);
-                  break;
-
-                case APTX_LL:
-                  Log.d(TAG, "setCodecConfigPreference: enable Gaming from ALS");
-                  mMediaAudio.enableGamingMode(device, 0);
-                  break;
-                default:
-                  break;
-            }
-            return;
-        }
-
         if (codecConfig == null) {
             Log.e(TAG, "setCodecConfigPreference: Codec config can't be null");
             return;
