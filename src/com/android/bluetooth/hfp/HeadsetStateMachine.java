@@ -177,6 +177,7 @@ public class HeadsetStateMachine extends StateMachine {
     static final int SCO_RETRIAL_NOT_REQ = 28;
     static final int SEND_CLCC_RESP_AFTER_VOIP_CALL = 29;
     static final int UPDATE_ROAMING_STATE = 30;
+    static final int RESUME_A2DP_DELAYED = 31;
 
     static final int STACK_EVENT = 101;
     private static final int CLCC_RSP_TIMEOUT = 104;
@@ -204,6 +205,8 @@ public class HeadsetStateMachine extends StateMachine {
     private static final int INCOMING_CALL_IND_DELAY = 200;
     private static final int MAX_RETRY_CONNECT_COUNT = 2;
     private static final String VOIP_CALL_NUMBER = "10000000";
+    private static final int RESUME_A2DP_DELAY_TIME_MSEC = 100;
+    private static final int A2DP_DELAY_MAX_COUNT = 5;
 
     //VR app launched successfully
     private static final int VR_SUCCESS = 1;
@@ -218,6 +221,9 @@ public class HeadsetStateMachine extends StateMachine {
     // maintain call states in state machine as well
     private final HeadsetCallState mStateMachineCallState =
                  new HeadsetCallState(0, 0, 0, "", 0, "");
+    private int mPreviousCallState = HeadsetHalConstants.CALL_STATE_IDLE;
+    private boolean mRingScoDisconnected = false;
+    private int mA2dpDelayCount = 0;
 
     private NetworkCallback mDefaultNetworkCallback = new NetworkCallback() {
         @Override
@@ -678,6 +684,7 @@ public class HeadsetStateMachine extends StateMachine {
             mStateMachineCallState.mCallState = 0;
             mStateMachineCallState.mNumber = "";
             mStateMachineCallState.mType = 0;
+            mPreviousCallState = HeadsetHalConstants.CALL_STATE_IDLE;
 
             // clear pending call states
             while (mDelayedCSCallStates.isEmpty() != true)
@@ -831,6 +838,7 @@ public class HeadsetStateMachine extends StateMachine {
             sendMessageDelayed(CONNECT_TIMEOUT, mDevice, sConnectTimeoutMs);
             mSystemInterface.queryPhoneState();
             // update call states in StateMachine
+            mPreviousCallState = mStateMachineCallState.mCallState;
             mStateMachineCallState.mNumActive =
                    mSystemInterface.getHeadsetPhoneState().getNumActiveCall();
             mStateMachineCallState.mNumHeld =
@@ -878,12 +886,31 @@ public class HeadsetStateMachine extends StateMachine {
                      processCallState(callState, false);
                      break;
                 }
+                case RESUME_A2DP_DELAYED: {
+                     stateLogD("RESUME_A2DP_DELAYED event");
+                     if (mRingScoDisconnected || mA2dpDelayCount > A2DP_DELAY_MAX_COUNT) {
+                         mHeadsetService.getHfpA2DPSyncInterface().releaseA2DP(mDevice);
+                         mA2dpDelayCount = 0;
+                         mRingScoDisconnected = false;
+                     } else {
+                         stateLogD("Sco connection for in-band ring isn't disconnected, delay a2dp resume. mA2dpDelayCount: " + mA2dpDelayCount);
+                         mA2dpDelayCount++;
+                         sendMessageDelayed(RESUME_A2DP_DELAYED, RESUME_A2DP_DELAY_TIME_MSEC);
+                     }
+                     break;
+                }
                 case RESUME_A2DP: {
                      /* If the call started/ended by the time A2DP suspend ack
                       * is received, send the call indicators before resuming
                       * A2DP.
                       */
                      if (mPendingCallStates.size() == 0) {
+                         if (isDelayA2dpResume()) {
+                             stateLogD("RESUME_A2DP evt, delay a2dp resume");
+                             mA2dpDelayCount = 0;
+                             sendMessageDelayed(RESUME_A2DP_DELAYED, RESUME_A2DP_DELAY_TIME_MSEC);
+                             break;
+                         }
                          stateLogD("RESUME_A2DP evt, resuming A2DP");
                          mHeadsetService.getHfpA2DPSyncInterface().releaseA2DP(mDevice);
                      } else {
@@ -1080,12 +1107,30 @@ public class HeadsetStateMachine extends StateMachine {
                             break;
                     }
                     break;
+                case RESUME_A2DP_DELAYED:
+                    stateLogD("RESUME_A2DP_DELAYED event");
+                    if (mRingScoDisconnected || mA2dpDelayCount > A2DP_DELAY_MAX_COUNT) {
+                        mHeadsetService.getHfpA2DPSyncInterface().releaseA2DP(mDevice);
+                        mA2dpDelayCount = 0;
+                        mRingScoDisconnected = false;
+                    } else {
+                        stateLogD("Sco connection for in-band ring isn't disconnected, delay a2dp resume. mA2dpDelayCount: " + mA2dpDelayCount);
+                        mA2dpDelayCount++;
+                        sendMessageDelayed(RESUME_A2DP_DELAYED, RESUME_A2DP_DELAY_TIME_MSEC);
+                    }
+                    break;
                 case RESUME_A2DP:
                       /* If the call started/ended by the time A2DP suspend ack
                       * is received, send the call indicators before resuming
                       * A2DP.
                       */
                      if (mPendingCallStates.size() == 0) {
+                         if (isDelayA2dpResume()) {
+                             stateLogD("RESUME_A2DP evt, delay a2dp resume");
+                             mA2dpDelayCount = 0;
+                             sendMessageDelayed(RESUME_A2DP_DELAYED, RESUME_A2DP_DELAY_TIME_MSEC);
+                             break;
+                         }
                          stateLogD("RESUME_A2DP evt, resuming A2DP");
                          mHeadsetService.getHfpA2DPSyncInterface().releaseA2DP(mDevice);
                      } else {
@@ -1579,12 +1624,31 @@ public class HeadsetStateMachine extends StateMachine {
                     stateLogD("ignore DISCONNECT_AUDIO, device=" + mDevice);
                     // ignore
                     break;
+                case RESUME_A2DP_DELAYED: {
+                    stateLogD("RESUME_A2DP_DELAYED event");
+                    if (mRingScoDisconnected || mA2dpDelayCount > A2DP_DELAY_MAX_COUNT) {
+                        mHeadsetService.getHfpA2DPSyncInterface().releaseA2DP(mDevice);
+                        mA2dpDelayCount = 0;
+                        mRingScoDisconnected = false;
+                    } else {
+                        stateLogD("Sco connection for in-band ring isn't disconnected, delay a2dp resume. mA2dpDelayCount: " + mA2dpDelayCount);
+                        mA2dpDelayCount++;
+                        sendMessageDelayed(RESUME_A2DP_DELAYED, RESUME_A2DP_DELAY_TIME_MSEC);
+                    }
+                    break;
+                }
                 case RESUME_A2DP: {
                      /* If the call started/ended by the time A2DP suspend ack
                       * is received, send the call indicators before resuming
                       * A2DP.
                       */
                      if (mPendingCallStates.size() == 0) {
+                         if (isDelayA2dpResume()) {
+                             stateLogD("RESUME_A2DP evt, delay a2dp resume");
+                             mA2dpDelayCount = 0;
+                             sendMessageDelayed(RESUME_A2DP_DELAYED, RESUME_A2DP_DELAY_TIME_MSEC);
+                             break;
+                         }
                          stateLogD("RESUME_A2DP evt, resuming A2DP");
                          mHeadsetService.getHfpA2DPSyncInterface().releaseA2DP(mDevice);
                      } else {
@@ -1603,6 +1667,7 @@ public class HeadsetStateMachine extends StateMachine {
             stateLogD("processAudioEvent, state=" + state);
             switch (state) {
                 case HeadsetHalConstants.AUDIO_STATE_CONNECTED:
+                    mRingScoDisconnected = false;
                     if (mHeadsetService.isScoAcceptable(mDevice) !=
                                 BluetoothStatusCodes.SUCCESS) {
                         stateLogW("processAudioEvent: reject incoming audio connection");
@@ -1639,6 +1704,7 @@ public class HeadsetStateMachine extends StateMachine {
                     transitionTo(mAudioConnecting);
                     break;
                 case HeadsetHalConstants.AUDIO_STATE_DISCONNECTED:
+                    mRingScoDisconnected = true;
                     if (!(mSystemInterface.isInCall() || mSystemInterface.isRinging())) {
                         /* If the call started/ended by the time A2DP suspend ack
                          * is received, send the call indicators before resuming
@@ -1704,6 +1770,7 @@ public class HeadsetStateMachine extends StateMachine {
         public void processAudioEvent(int state) {
             switch (state) {
                 case HeadsetHalConstants.AUDIO_STATE_DISCONNECTED:
+                    mRingScoDisconnected = true;
                     stateLogW("processAudioEvent: audio connection failed");
                     if ((mIsBlacklistedDeviceforRetrySCO == true) && (mIsRetrySco == true)) {
                         Log.d(TAG, "blacklisted device, retry SCO after " +
@@ -1721,6 +1788,7 @@ public class HeadsetStateMachine extends StateMachine {
                     // ignore, there is no BluetoothHeadset.STATE_AUDIO_DISCONNECTING
                     break;
                 case HeadsetHalConstants.AUDIO_STATE_CONNECTED:
+                    mRingScoDisconnected = false;
                     if (!mSystemInterface.getHeadsetPhoneState().getIsCsCall()) {
                         stateLogI("Sco connected for call other than CS, check network type");
                         sendVoipConnectivityNetworktype(true);
@@ -1874,6 +1942,7 @@ public class HeadsetStateMachine extends StateMachine {
             switch (state) {
                 case HeadsetHalConstants.AUDIO_STATE_DISCONNECTED:
                     stateLogI("processAudioEvent: audio disconnected by remote");
+                    mRingScoDisconnected = true;
                     if (mAdapterService.isTwsPlusDevice(mDevice) && mHeadsetService.isAudioOn()) {
                         //If It is TWSP device, make sure SCO is not active on
                         //any devices before letting Audio knowing about it
@@ -1960,6 +2029,7 @@ public class HeadsetStateMachine extends StateMachine {
             switch (state) {
                 case HeadsetHalConstants.AUDIO_STATE_DISCONNECTED:
                     stateLogI("processAudioEvent: audio disconnected");
+                    mRingScoDisconnected = true;
                     if (mAdapterService.isTwsPlusDevice(mDevice) && mHeadsetService.isAudioOn()) {
                          //If It is TWSP device, make sure SCO is not active on
                          //any devices before letting Audio knowing about it
@@ -1972,6 +2042,7 @@ public class HeadsetStateMachine extends StateMachine {
                     break;
                 case HeadsetHalConstants.AUDIO_STATE_CONNECTED:
                     stateLogW("processAudioEvent: audio disconnection failed");
+                    mRingScoDisconnected = false;
                     transitionTo(mAudioOn);
                     break;
                 case HeadsetHalConstants.AUDIO_STATE_CONNECTING:
@@ -2097,6 +2168,19 @@ public class HeadsetStateMachine extends StateMachine {
         });
         Log.i(TAG, "setAudioParameters for " + mDevice + ": " + keyValuePairs);
         mSystemInterface.getAudioManager().setParameters(keyValuePairs);
+    }
+
+    /*
+     * Delay a2dp resume to wait for sco disconnection for in-banding ring
+     */
+    private boolean isDelayA2dpResume() {
+        boolean isRingHangup = mStateMachineCallState.mNumActive == 0 &&
+                mStateMachineCallState.mNumHeld == 0 &&
+                (mStateMachineCallState.mCallState == HeadsetHalConstants.CALL_STATE_IDLE &&
+                        mPreviousCallState == HeadsetHalConstants.CALL_STATE_INCOMING);
+        Log.i(TAG, "isRingHangup: " + isRingHangup + " , isInbandRingingEnabled: " +
+                mHeadsetService.isInbandRingingEnabled());
+        return mHeadsetService.isInbandRingingEnabled() && isRingHangup;
     }
 
     private String parseUnknownAt(String atString) {
@@ -2364,6 +2448,7 @@ public class HeadsetStateMachine extends StateMachine {
 
                 log("Send Idle call indicators once Active call disconnected.");
                 // TODO: cross check this
+                mPreviousCallState = mStateMachineCallState.mCallState;
                 mStateMachineCallState.mCallState =
                                                HeadsetHalConstants.CALL_STATE_IDLE;
                 HeadsetCallState updateCallState = new HeadsetCallState(callState.mNumActive,
@@ -2429,6 +2514,7 @@ public class HeadsetStateMachine extends StateMachine {
                        SystemProperties.getInt("persist.vendor.btstack.MO.RETRY_SCO.interval", 2000);
            }
         }
+        mPreviousCallState = mStateMachineCallState.mCallState;
         mStateMachineCallState.mNumActive = callState.mNumActive;
         mStateMachineCallState.mNumHeld = callState.mNumHeld;
         // get the top of the Q
@@ -2717,6 +2803,7 @@ public class HeadsetStateMachine extends StateMachine {
         } else if (hasMessages(SEND_CLCC_RESP_AFTER_VOIP_CALL)) {
             Log.w(TAG, "processAtClcc: send OK response as VOIP call ended just now");
             mNativeInterface.clccResponse(device, 0, 0, 0, 0, false, "", 0);
+            removeMessages(SEND_CLCC_RESP_AFTER_VOIP_CALL);
         } else {
             // In Telecom call, ask Telecom to send send remote phone number
             if (!mSystemInterface.listCurrentCalls(ApmConstIntf.AudioProfiles.HFP)) {

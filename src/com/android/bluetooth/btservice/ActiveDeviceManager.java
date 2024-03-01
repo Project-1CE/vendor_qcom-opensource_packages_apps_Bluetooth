@@ -152,6 +152,8 @@ public class ActiveDeviceManager {
     private boolean mTwsPlusSwitch = false;
     private boolean mWiredDeviceConnected = false;
 
+    private static final int DELAY_A2DP_SLEEP_MILLIS = 50;
+
     Object mBroadcastService = null;
     Method mBroadcastIsActive = null;
     Method mBroadcastNotifyState = null;
@@ -243,6 +245,13 @@ public class ActiveDeviceManager {
                     int nextState = intent.getIntExtra(BluetoothProfile.EXTRA_STATE, -1);
 
                     Log.d(TAG, "prevState: " + prevState + ", nextState: " + nextState);
+                    Log.d(TAG, "Thread sleep for " + DELAY_A2DP_SLEEP_MILLIS + "ms");
+                    try {
+                        Thread.sleep(DELAY_A2DP_SLEEP_MILLIS);
+                    } catch(InterruptedException ex) {
+                        Log.e(TAG, " MESSAGE_LE_AUDIO_ACTION_CONNECTION_STATE_CHANGED was interrupted");
+                        Thread.currentThread().interrupt();
+                    }
                     if (prevState == nextState) {
                         // Nothing has changed
                         Log.d(TAG, "prevState is same as nextState.");
@@ -258,6 +267,10 @@ public class ActiveDeviceManager {
                         }
                         if (mLeAudioActiveDevice != null) {
                             LeAudioService leAudioService = mFactory.getLeAudioService();
+                            if (leAudioService == null) {
+                                 Log.d(TAG, "LeAudioService is NULL");
+                                 break;
+                            }
                             int groupId = leAudioService.getGroupId(mLeAudioActiveDevice);
                             if (leAudioService.getGroupId(device) == groupId) {
                                 Log.d(TAG, "Lead device is already active");
@@ -281,7 +294,8 @@ public class ActiveDeviceManager {
                         }
                         int mMediaProfile =
                             getCurrentActiveProfile(ApmConstIntf.AudioFeatures.MEDIA_AUDIO);
-                        if (mMediaProfile == ApmConstIntf.AudioProfiles.A2DP) {
+                        if (mMediaProfile == ApmConstIntf.AudioProfiles.NONE ||
+                                    mMediaProfile == ApmConstIntf.AudioProfiles.A2DP) {
                             mLeAudioActiveDevice = null;
                            if (DBG) {
                               Log.d(TAG, "cuurent active profile is A2DP"
@@ -853,6 +867,8 @@ public class ActiveDeviceManager {
 
                 if (deviceInfo.getType() == AudioDeviceInfo.TYPE_BLE_HEADSET) {
                    Log.d(TAG, "BLE Device is removed");
+                   Log.d(TAG, "Setting mLeAudioActiveDevice Null");
+                   mLeAudioActiveDevice = null;
                    hasRemovedBleDevice = true;
                    bleDeviceInfo = deviceInfo;
                 }
@@ -896,7 +912,7 @@ public class ActiveDeviceManager {
             filter.addAction(BluetoothHeadset.ACTION_ACTIVE_DEVICE_CHANGED);
         }
         filter.addAction(BluetoothHearingAid.ACTION_ACTIVE_DEVICE_CHANGED);
-        mAdapterService.registerReceiver(mReceiver, filter);
+        mAdapterService.registerReceiver(mReceiver, filter, Context.RECEIVER_EXPORTED);
 
         mAudioManager.registerAudioDeviceCallback(mAudioManagerAudioDeviceCallback, mHandler);
     }

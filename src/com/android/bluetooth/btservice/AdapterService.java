@@ -274,6 +274,7 @@ public class AdapterService extends Service {
     private static final int MIN_OFFLOADED_FILTERS = 10;
     private static final int MIN_OFFLOADED_SCAN_STORAGE_BYTES = 1024;
     private static final Duration PENDING_SOCKET_HANDOFF_TIMEOUT = Duration.ofMinutes(1);
+    private static final Duration GENERATE_LOCAL_OOB_DATA_TIMEOUT = Duration.ofSeconds(2);
     private static final int BT_TRANSPORT_BR_EDR = 1;
     private static final int BT_TRANSPORT_LE = 2;
     private static final int HCI_BTLE_AFH_CHANNEL_MAP_LEN = 5;
@@ -565,7 +566,11 @@ public class AdapterService extends Service {
                         + " failed (" + e + ")");
             }
         }
-        mPreferredAudioProfilesCallbacks.finishBroadcast();
+        try {
+            mPreferredAudioProfilesCallbacks.finishBroadcast();
+        } catch (IllegalStateException e) {
+            debugLog("sendPreferredAudioProfilesCallbackToApps() - Exception " + e);
+        }
     }
 
     private static final int MESSAGE_PROFILE_SERVICE_STATE_CHANGED = 1;
@@ -4735,7 +4740,7 @@ public class AdapterService extends Service {
             if (!isDualModeAudioEnabled()) {
                 return BluetoothStatusCodes.FEATURE_NOT_SUPPORTED;
             }
-            
+
             Log.i(TAG,"registerPreferredAudioProfilesChangedCallback");
             service.mPreferredAudioProfilesCallbacks.register(callback);
             return BluetoothStatusCodes.SUCCESS;
@@ -5057,6 +5062,11 @@ public class AdapterService extends Service {
                     new DiscoveringPackage(callingPackage, permission, hasDisavowedLocation));
         }
 
+        if (mAdapterProperties.isDiscovering()) {
+            Log.i(TAG,"discovery already active, ignore startDiscovery");
+            return false;
+        }
+
         return startDiscoveryNative();
     }
 
@@ -5220,13 +5230,29 @@ public class AdapterService extends Service {
         if (mOobDataCallbackQueue.peek() != null) {
             try {
                 callback.onError(BluetoothStatusCodes.ERROR_ANOTHER_ACTIVE_OOB_REQUEST);
-                return;
             } catch (RemoteException e) {
                 Log.e(TAG, "Failed to make callback", e);
             }
+            return;
         }
         mOobDataCallbackQueue.offer(callback);
+        mHandler.postDelayed(() -> removeFromOobDataCallbackQueue(callback),
+                GENERATE_LOCAL_OOB_DATA_TIMEOUT.toMillis());
         generateLocalOobDataNative(transport);
+    }
+
+    private synchronized void removeFromOobDataCallbackQueue(IBluetoothOobDataCallback callback) {
+        if (callback == null) {
+            return;
+        }
+
+        if (mOobDataCallbackQueue.peek() == callback) {
+            try {
+                mOobDataCallbackQueue.poll().onError(BluetoothStatusCodes.ERROR_UNKNOWN);
+            } catch (RemoteException e) {
+                Log.e(TAG, "Failed to make OobDataCallback to remove callback from queue", e);
+            }
+        }
     }
 
     /* package */ synchronized void notifyOobDataCallback(int transport, OobData oobData) {
@@ -5691,6 +5717,15 @@ public class AdapterService extends Service {
         if (!profileServicesRunning()) {
             Log.e(TAG, "disconnectAllEnabledProfiles: Not all profile services bound");
             return BluetoothStatusCodes.ERROR_BLUETOOTH_NOT_ENABLED;
+        }
+
+        if(Utils.isDualModeAudioEnabled()) {
+            ActiveDeviceManagerServiceIntf mActiveDeviceManager =
+                ActiveDeviceManagerServiceIntf.get();
+
+            if(mActiveDeviceManager != null) {
+                mActiveDeviceManager.handleInactiveProfileUpdate(device);
+            }
         }
 
         boolean isQtiLeAudioEnabled = ApmConstIntf.getQtiLeAudioEnabled();
