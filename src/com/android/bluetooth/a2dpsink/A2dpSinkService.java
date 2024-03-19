@@ -13,6 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+ /*
+ * Changes from Qualcomm Innovation Center are provided under the following license:
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause-Clear
+ */
+
 package com.android.bluetooth.a2dpsink;
 
 import android.annotation.RequiresPermission;
@@ -33,6 +40,9 @@ import com.android.bluetooth.btservice.storage.DatabaseManager;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.bluetooth.avrcpcontroller.AvrcpControllerService;
 import com.android.modules.utils.SynchronousResultReceiver;
+import android.content.Context;
+import android.media.AudioManager;
+import android.os.Message;
 
 
 import java.util.ArrayList;
@@ -63,7 +73,10 @@ public class A2dpSinkService extends ProfileService {
     protected static BluetoothDevice mStreamingDevice;
 
     private static int mMaxA2dpSinkConnections = 1;
+    private A2dpSinkVendorService mA2dpSinkVendor;
+    private AudioManager mAudioManager;
     public static final int MAX_ALLOWED_SINK_CONNECTIONS = 2;
+    private static boolean sAudioIsEnabled = false;
     static {
         classInitNative();
     }
@@ -79,6 +92,11 @@ public class A2dpSinkService extends ProfileService {
         mMaxA2dpSinkConnections = Math.min(
                 SystemProperties.getInt("persist.vendor.bt.a2dp.sink_conn", 1),
                 MAX_ALLOWED_SINK_CONNECTIONS);
+        mAudioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+        mA2dpSinkVendor = new A2dpSinkVendorService(this);
+        if (mA2dpSinkVendor != null) {
+            mA2dpSinkVendor.init();
+        }
         return true;
     }
 
@@ -90,6 +108,9 @@ public class A2dpSinkService extends ProfileService {
             }
     }
         sService = null;
+        if (mA2dpSinkVendor != null) {
+            mA2dpSinkVendor.cleanup();
+        }
         return true;
     }
 
@@ -642,6 +663,17 @@ public class A2dpSinkService extends ProfileService {
                    mDatabaseManager.setConnectionForA2dpSrc(otherDevice);
                }
             }
+            if(sAudioIsEnabled == true) {
+              mA2dpSinkStreamHandler.obtainMessage(
+                  A2dpSinkStreamHandler.STOP_SINK).sendToTarget();
+              sAudioIsEnabled = false;
+            }
+            if (mAudioManager != null) {
+              Message msg = mA2dpSinkStreamHandler.obtainMessage(
+                                A2dpSinkStreamHandler.REMOVE_ACTIVE);
+              msg.obj = device;
+              mA2dpSinkStreamHandler.sendMessage(msg);
+            }
             mStreamingDevice = null;
         }
 
@@ -653,6 +685,12 @@ public class A2dpSinkService extends ProfileService {
                 mStreamingDevice = device;
             } else if (device != null) {
                 mStreamingDevice = device;
+            }
+            if (mAudioManager != null) {
+                Message msg = mA2dpSinkStreamHandler.obtainMessage(
+                                A2dpSinkStreamHandler.SET_ACTIVE);
+                msg.obj = device;
+                mA2dpSinkStreamHandler.sendMessage(msg);
             }
         }
         stateMachine.sendMessage(A2dpSinkStateMachine.STACK_EVENT, event);
@@ -687,5 +725,24 @@ public class A2dpSinkService extends ProfileService {
                 channelCount);
         A2dpSinkStateMachine stateMachine = getOrCreateStateMachine(event.mDevice);
         stateMachine.sendMessage(A2dpSinkStateMachine.STACK_EVENT, event);
+    }
+
+    public void onStartIndCallback(byte[] address) {
+        Log.d(TAG, "onStartIndCallback" );
+       if(sAudioIsEnabled == false) {
+         mA2dpSinkStreamHandler.obtainMessage(
+             A2dpSinkStreamHandler.START_SINK).sendToTarget();
+         sAudioIsEnabled = true;
+       }
+    }
+
+    public void onSuspendIndCallback(byte[] address) {
+        // TODO to call set param to intimate Audio HAL
+        Log.d(TAG, "onSuspendIndCallback" );
+        if(sAudioIsEnabled == true) {
+          mA2dpSinkStreamHandler.obtainMessage(
+              A2dpSinkStreamHandler.STOP_SINK).sendToTarget();
+          sAudioIsEnabled = false;
+        }
     }
 }

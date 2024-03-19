@@ -313,6 +313,32 @@ public class ActiveDeviceManager {
                             final LeAudioService leAudioService = mFactory.getLeAudioService();
                             int groupId = leAudioService.getGroupId(device);
                             BluetoothDevice peerLeAudioDevice = null;
+
+                            if(Utils.isDualModeAudioEnabled()) {
+                                boolean isBredrConnected = false;
+                                A2dpService mA2dp = A2dpService.getA2dpService();
+                                if(mA2dp != null && mA2dp.getConnectionState(device) ==
+                                        BluetoothProfile.STATE_CONNECTED) {
+                                    ActiveDeviceManagerServiceIntf mAdms =
+                                                         ActiveDeviceManagerServiceIntf.get();
+                                    if(mAdms != null) {
+                                        HeadsetService mHfp = HeadsetService.getHeadsetService();
+                                        if(mHfp != null && mHfp.getConnectionState(device) ==
+                                                        BluetoothProfile.STATE_CONNECTED) {
+                                            mAdms.setActiveDevice(device,
+                                                ApmConstIntf.AudioFeatures.CALL_AUDIO);
+                                        }
+
+                                        Log.w(TAG, "DuMo: Set BREDR profiles as active");
+                                        mAdms.setActiveDevice(device,
+                                                ApmConstIntf.AudioFeatures.MEDIA_AUDIO);
+                                        mLeAudioActiveDevice = null;
+
+                                        return;
+                                    }
+                                }
+                            }
+
                             if (groupId != BluetoothLeAudio.GROUP_ID_INVALID &&
                                     groupId != INVALID_SET_ID) {
                                 List<BluetoothDevice> leAudioConnectedDevice =
@@ -525,6 +551,24 @@ public class ActiveDeviceManager {
                         if (device.getAddress().equals(broadcastBDA)) {
                             Log.d(TAG," Update from BA, bail out");
                             break;
+                        }
+                    }
+                    if(Utils.isDualModeAudioEnabled() && device != null) {
+                        A2dpService mA2dp = A2dpService.getA2dpService();
+                        if(mA2dp != null && mA2dp.getConnectionState(device) !=
+                                BluetoothProfile.STATE_CONNECTED) {
+                            ActiveDeviceManagerServiceIntf mAdms =
+                                    ActiveDeviceManagerServiceIntf.get();
+                            if(mAdms != null) {
+                                int mActveProfile = mAdms.getActiveProfile
+                                        (ApmConstIntf.AudioFeatures.MEDIA_AUDIO);
+                                if(mActveProfile == ApmConstIntf.AudioProfiles.A2DP) {
+                                    Log.d(TAG," " + device + " is not connected, bail out");
+                                    mAdms.setActiveDevice(null,
+                                                ApmConstIntf.AudioFeatures.MEDIA_AUDIO);
+                                    break;
+                                }
+                            }
                         }
                     }
 
