@@ -156,6 +156,7 @@ public class LeAudioService extends ProfileService {
     private int mLeActiveGroupID;
     private LeAudioCodecConfig mLeAudioCodecConfig;
     ServiceFactory mServiceFactory = new ServiceFactory();
+    private final static Object mLeAudioServiceLock = new Object();
 
     //LeAudioNativeInterface mLeAudioNativeInterface;
     //LeAudioBroadcasterNativeInterface mLeAudioBroadcasterNativeInterface = null;
@@ -430,7 +431,9 @@ public class LeAudioService extends ProfileService {
         if (DBG) {
             Log.d(TAG, "setLeAudioService(): set to: " + instance);
         }
-        sLeAudioService = instance;
+        synchronized(mLeAudioServiceLock) {
+            sLeAudioService = instance;
+        }
     }
 
     public boolean connect(BluetoothDevice device) {
@@ -2353,6 +2356,7 @@ public class LeAudioService extends ProfileService {
             if (!Utils.checkServiceAvailable(mService, TAG)
                     || !Utils.checkCallerIsSystemOrActiveOrManagedUser(mService, TAG)
                     || !Utils.checkConnectPermissionForDataDelivery(mService, source, TAG)) {
+                Log.d(TAG, "getService(): return");
                 return null;
             }
             if(mService == null) {
@@ -2731,23 +2735,26 @@ public class LeAudioService extends ProfileService {
                 Objects.requireNonNull(source, "source cannot be null");
                 Objects.requireNonNull(receiver, "receiver cannot be null");
 
-                LeAudioService service = getService(source);
-                if(service == null) {
-                    Log.i(TAG, "registerCallback: service is null");
-                    throw new IllegalStateException("Service is unavailable: " + service);
-                } else {
-                    Log.i(TAG, "registerCallback: service is NOT null");
-                    if(service.mLeAudioCallbacks == null) {
-                        Log.i(TAG, "registerCallback: service.mLeAudioCallbacks is null");
+                Log.i(TAG, "registerCallback: mLeAudioServiceLock: " + mLeAudioServiceLock);
+                synchronized(mLeAudioServiceLock) {
+                    LeAudioService service = getService(source);
+                    if(service == null) {
+                        Log.i(TAG, "registerCallback: service is null");
                         throw new IllegalStateException("Service is unavailable: " + service);
-                    } else{
-                        Log.i(TAG, "registerCallback: service.mLeAudioCallbacks is NOT null");
+                    } else {
+                        Log.i(TAG, "registerCallback: service is NOT null");
+                        if(service.mLeAudioCallbacks == null) {
+                            Log.i(TAG, "registerCallback: service.mLeAudioCallbacks is null");
+                            throw new IllegalStateException("Service is unavailable: " + service);
+                        } else{
+                            Log.i(TAG, "registerCallback: service.mLeAudioCallbacks is NOT null");
+                        }
                     }
-                }
 
-                enforceBluetoothPrivilegedPermission(service);
-                service.mLeAudioCallbacks.register(callback);
-                receiver.send(null);
+                    enforceBluetoothPrivilegedPermission(service);
+                    service.mLeAudioCallbacks.register(callback);
+                    receiver.send(null);
+                }
             } catch (RuntimeException e) {
                 Log.i(TAG, "registerCallback: catch exception");
                 receiver.propagateException(e);

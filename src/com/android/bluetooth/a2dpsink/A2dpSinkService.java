@@ -27,17 +27,20 @@ import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothAudioConfig;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothProfile;
+import android.bluetooth.BluetoothUuid;
 import android.bluetooth.IBluetoothA2dpSink;
 import android.content.AttributionSource;
 import android.util.Log;
 import android.os.SystemProperties;
 
 
+import com.android.bluetooth.mapclient.MapClientService;
 import com.android.bluetooth.Utils;
 import com.android.bluetooth.btservice.AdapterService;
 import com.android.bluetooth.btservice.ProfileService;
 import com.android.bluetooth.btservice.storage.DatabaseManager;
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.util.ArrayUtils;
 import com.android.bluetooth.avrcpcontroller.AvrcpControllerService;
 import com.android.modules.utils.SynchronousResultReceiver;
 import android.content.Context;
@@ -63,6 +66,7 @@ public class A2dpSinkService extends ProfileService {
     //static final int MAX_ALLOWED_SINK_CONNECTIONS = 2;
 
     private final BluetoothAdapter mAdapter;
+    private AdapterService mAdapterService;
     private DatabaseManager mDatabaseManager;
     protected static Map<BluetoothDevice, A2dpSinkStateMachine> mDeviceStateMap =
             new ConcurrentHashMap<>(1);
@@ -71,12 +75,15 @@ public class A2dpSinkService extends ProfileService {
     private static A2dpSinkStreamHandler mA2dpSinkStreamHandler;
     private static A2dpSinkService sService;
     protected static BluetoothDevice mStreamingDevice;
+    protected static BluetoothDevice mHandOffPendingDevice = null;
 
     private static int mMaxA2dpSinkConnections = 1;
     private A2dpSinkVendorService mA2dpSinkVendor;
     private AudioManager mAudioManager;
     public static final int MAX_ALLOWED_SINK_CONNECTIONS = 2;
     private static boolean sAudioIsEnabled = false;
+    private static boolean sIsHandOffPending = false;
+    private static boolean mIsSplitSink = false;
     static {
         classInitNative();
     }
@@ -86,13 +93,20 @@ public class A2dpSinkService extends ProfileService {
         mDatabaseManager = Objects.requireNonNull(AdapterService.getAdapterService().getDatabase(),
                 "DatabaseManager cannot be null when A2dpSinkService starts");
 
+        mAdapterService = Objects.requireNonNull(AdapterService.getAdapterService(),
+                "AdapterService cannot be null when A2dpSinkService starts");
         initNative();
         sService = this;
         mA2dpSinkStreamHandler = new A2dpSinkStreamHandler(this, this);
         mMaxA2dpSinkConnections = Math.min(
                 SystemProperties.getInt("persist.vendor.bt.a2dp.sink_conn", 1),
                 MAX_ALLOWED_SINK_CONNECTIONS);
+        mIsSplitSink = SystemProperties.
+          getBoolean("persist.vendor.bluetooth.split_a2dp_sink", false);
         mAudioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+        if (mAudioManager != null) {
+            mAudioManager.setParameters("btsink_enable=false");
+        }
         mA2dpSinkVendor = new A2dpSinkVendorService(this);
         if (mA2dpSinkVendor != null) {
             mA2dpSinkVendor.init();
@@ -415,7 +429,7 @@ public class A2dpSinkService extends ProfileService {
 
     public  void informTGStatePlaying(BluetoothDevice device, boolean isPlaying) {
         Log.d(TAG, "informTGStatePlaying: device: " + device
-                + ", mStreamingDevice:" + mStreamingDevice);
+                + ", mStreamingDevice:" + mStreamingDevice + " isPlaying " + isPlaying);
         A2dpSinkStateMachine mStateMachine = null;
         synchronized (mBtA2dpLock) {
             mStateMachine = mDeviceStateMap.get(device);
@@ -430,10 +444,12 @@ public class A2dpSinkService extends ProfileService {
                     A2dpSinkStreamHandler.SRC_PAUSE).sendToTarget();
             } else {
                 // Soft-Handoff from AVRCP Cmd (if received before AVDTP_START)
-                initiateHandoffOperations(device);
-                if (mStreamingDevice != null && !mStreamingDevice.equals(device)) {
-                    Log.d(TAG, "updating streaming device after avrcp status command");
-                    mStreamingDevice = device;
+                if(!mIsSplitSink) {
+                    initiateHandoffOperations(device);
+                    if (mStreamingDevice != null && !mStreamingDevice.equals(device)) {
+                        Log.d(TAG, "updating streaming device after avrcp status command");
+                        mStreamingDevice = device;
+                    }
                 }
                 //mStateMachine.sendMessage(A2dpSinkStateMachine.EVENT_AVRCP_TG_PLAY);
                 mA2dpSinkStreamHandler.obtainMessage(
@@ -683,7 +699,7 @@ public class A2dpSinkService extends ProfileService {
                 Log.d(TAG, "current connected device: " + device + "is different from previous device");
                 initiateHandoffOperations(device);
                 mStreamingDevice = device;
-            } else if (device != null) {
+            } else if (device != null && !mIsSplitSink) {
                 mStreamingDevice = device;
             }
             if (mAudioManager != null) {
@@ -692,27 +708,66 @@ public class A2dpSinkService extends ProfileService {
                 msg.obj = device;
                 mA2dpSinkStreamHandler.sendMessage(msg);
             }
+            if (SystemProperties.get("ro.board.platform").equals("neo")) {
+                if (mAdapterService != null
+                    && ArrayUtils.contains(mAdapterService.getRemoteUuids(device),
+                                                   BluetoothUuid.MAS)) {
+                    Log.d(TAG ,"Connect MapClient for device :" +device);
+                    connectMapclient(device);
+                }
+            }
         }
         stateMachine.sendMessage(A2dpSinkStateMachine.STACK_EVENT, event);
+    }
+
+    //Initiate MapClient Connect after A2dp Sink connected
+    public boolean connectMapclient(BluetoothDevice device) {
+        MapClientService mapclientSvc = MapClientService.getMapClientService();
+        if(mapclientSvc ==null) {
+            return false;
+        }
+        Log.d(TAG,"Connect MapClient");
+        return mapclientSvc.connect(device);
     }
 
     private void onAudioStateChanged(byte[] address, int state) {
         BluetoothDevice device = getDevice(address);
         Log.d(TAG, "onAudioStateChanged. Audio State = " + state + ", device:" + device);
-
+        Log.d(TAG, "onAudioStateChanged. mStreamingDevice = " + mStreamingDevice);
         A2dpSinkStateMachine stateMachine = mDeviceStateMap.get(device);
         if (stateMachine == null) {
+            Log.d(TAG, "onAudioStateChanged return");
             return;
         }
 
         if (state == StackEvent.AUDIO_STATE_STARTED) {
+            if(sIsHandOffPending == true) {
+                mStreamingDevice = mHandOffPendingDevice;
+                sIsHandOffPending = false;
+                mHandOffPendingDevice = null;
+            }
             initiateHandoffOperations(device);
             mStreamingDevice = device;
             mA2dpSinkStreamHandler.obtainMessage(
                     A2dpSinkStreamHandler.SRC_STR_START).sendToTarget();
-        } else if (state == StackEvent.AUDIO_STATE_STOPPED) {
+
+        } else if (state == StackEvent.AUDIO_STATE_STOPPED ||
+                   state == StackEvent.AUDIO_STATE_REMOTE_SUSPEND) {
             mA2dpSinkStreamHandler.obtainMessage(
                     A2dpSinkStreamHandler.SRC_STR_STOP).sendToTarget();
+            if (sIsHandOffPending == true &&
+                mStreamingDevice != null && mHandOffPendingDevice != null) {
+                Log.d(TAG, "current stopped device: " + device);
+                mA2dpSinkStreamHandler.obtainMessage(
+                      A2dpSinkStreamHandler.START_SINK).sendToTarget();
+                sAudioIsEnabled = true;
+                return;
+            }
+
+            if(mIsSplitSink) {
+                sAudioIsEnabled = false;
+                mStreamingDevice = null;
+            }
         }
     }
 
@@ -728,18 +783,36 @@ public class A2dpSinkService extends ProfileService {
     }
 
     public void onStartIndCallback(byte[] address) {
-        Log.d(TAG, "onStartIndCallback" );
-       if(sAudioIsEnabled == false) {
-         mA2dpSinkStreamHandler.obtainMessage(
-             A2dpSinkStreamHandler.START_SINK).sendToTarget();
-         sAudioIsEnabled = true;
-       }
+        BluetoothDevice device = getDevice(address);
+        Log.d(TAG, "onStartIndCallback dev " + device + "streaming device" + mStreamingDevice);
+        if (mStreamingDevice != null && !mStreamingDevice.equals(device)) {
+            Log.d(TAG, "current streaming device: " + mStreamingDevice);
+            if(sIsHandOffPending == true &&
+               mHandOffPendingDevice.equals(device)) {
+              Log.d(TAG, "handoff already triggered: " + mStreamingDevice);
+              return;
+            }
+            sIsHandOffPending = true;
+            mHandOffPendingDevice = device;
+            initiateHandoffOperations(device);
+            mA2dpSinkStreamHandler.obtainMessage(
+                A2dpSinkStreamHandler.STOP_SINK).sendToTarget();
+            sAudioIsEnabled = false;
+            return;
+        }
+
+        if(sAudioIsEnabled == false) {
+             mA2dpSinkStreamHandler.obtainMessage(
+                 A2dpSinkStreamHandler.START_SINK).sendToTarget();
+            sAudioIsEnabled = true;
+        }
     }
 
     public void onSuspendIndCallback(byte[] address) {
-        // TODO to call set param to intimate Audio HAL
-        Log.d(TAG, "onSuspendIndCallback" );
-        if(sAudioIsEnabled == true) {
+        BluetoothDevice device = getDevice(address);
+        Log.d(TAG, "onSuspendIndCallback" + device);
+        if(sAudioIsEnabled == true ||
+            (!sAudioIsEnabled && mStreamingDevice != null)) {
           mA2dpSinkStreamHandler.obtainMessage(
               A2dpSinkStreamHandler.STOP_SINK).sendToTarget();
           sAudioIsEnabled = false;
