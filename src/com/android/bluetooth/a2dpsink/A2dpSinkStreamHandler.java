@@ -38,6 +38,7 @@ import android.bluetooth.BluetoothProfile;
 import com.android.bluetooth.R;
 import com.android.bluetooth.avrcpcontroller.BluetoothMediaBrowserService;
 import com.android.bluetooth.hfpclient.HeadsetClientService;
+import com.android.bluetooth.Utils;
 
 import java.util.List;
 
@@ -83,6 +84,7 @@ public class A2dpSinkStreamHandler extends Handler {
     public static final int STOP_SINK = 12; // notify Audio HAL to stop split sink
     public static final int SET_ACTIVE = 13;  // notify Audio HAL active changed
     public static final int REMOVE_ACTIVE = 14; // notify Audio HAL active device removed
+    public static final int DELAYED_START_IND = 15; // call start Indication
 
     // Used to indicate focus lost
     private static final int STATE_FOCUS_LOST = 0;
@@ -177,6 +179,13 @@ public class A2dpSinkStreamHandler extends Handler {
                 break;
 
             case SRC_PLAY:
+                HeadsetClientService mHeadsetClientService
+                       = HeadsetClientService.getHeadsetClientService();
+                if(mHeadsetClientService!= null
+                        && mHeadsetClientService.isA2dpSinkPossible() == false) {
+                    sendAvrcpPause();
+                    break;
+                }
                 mStreamAvailable = true;
                 // Remote play command.
                 if (isIotDevice() || isTvDevice() || shouldRequestFocus()) {
@@ -291,6 +300,14 @@ public class A2dpSinkStreamHandler extends Handler {
                     mStreamAvailable = false;
                 }
                 break;
+            case DELAYED_START_IND:
+                BluetoothDevice device = (BluetoothDevice) message.obj;
+                byte[] address = Utils.getByteAddress(device);
+                if(mA2dpSinkService!= null){
+                    mA2dpSinkService.onStartIndCallback(address);
+                }
+
+            break;
 
             default:
                 Log.w(TAG, "Received unexpected event: " + message.what);
